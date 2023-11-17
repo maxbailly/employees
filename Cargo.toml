@@ -1,0 +1,40 @@
+[package]
+name = "employees"
+version = "0.0.0"
+edition = "2021"
+authors = ["Maxime BAILLY <maxbailly@hotmail.fr>"]
+categories = ["threads", "workers", "runtime"]
+keywords = ["employees", "multi-threading"]
+
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+affinity = "0.1.2"
+signal-hook = "0.3.17"
+thiserror = "1.0.48"
+minuteurs = { version = "1.0.1", optional = true }
+
+[dev-dependencies]
+rand = "0.8.5"
+tokio = { version = "1.32.0", features = ["rt-multi-thread", "time"] }
+axum = "0.6.20"
+crossbeam-channel = "0.5.8"
+
+[features]
+default = []
+timing = ["dep:minuteurs"]
+
+[[example]]
+name = "mini-project"
+path = "examples/mini-project/main.rs"
+required-features = ["timing"]
+
+[[example]]
+name = "nested-runtimes"
+path = "examples/nested-runtimes/main.rs"
+required-features = ["timing"]
+
+[[example]]
+name = "respawn"
+path = "examples/respawnv2/main.rs"
