@@ -1,10 +1,15 @@
 [package]
 name = "employees"
-version = "0.0.0"
+version = "0.0.1"
 edition = "2021"
 authors = ["Maxime BAILLY <maxbailly@hotmail.fr>"]
 categories = ["threads", "workers", "runtime"]
 keywords = ["employees", "multi-threading"]
+license = "MIT"
+documentation = "https://docs.rs/employees"
+repository = "https://github.com/Caelmyn/employees"
+readme = "README.md"
+description = "A small runtime that all the boilerplate when using threads."
 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
