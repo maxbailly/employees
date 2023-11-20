@@ -65,7 +65,10 @@ impl<T: Type> Runtime<T> {
         settings: Settings,
     ) -> Result<(), Error> {
         let shutdown = self.shutdown.clone();
-        let thread = settings.into_inner().spawn(move || actor.run(shutdown))?;
+        let thread = settings
+            .into_inner()
+            .spawn(move || actor.run(shutdown))
+            .map_err(Error::StartingThread)?;
 
         self.threads.push(thread);
 
@@ -95,10 +98,13 @@ impl<T: Type> Runtime<T> {
         C: AsRef<[usize]> + Send + 'static,
     {
         let shutdown = self.shutdown.clone();
-        let thread = settings.into_inner().spawn(move || {
-            let _ = affinity::set_thread_affinity(core_ids);
-            actor.run(shutdown)
-        })?;
+        let thread = settings
+            .into_inner()
+            .spawn(move || {
+                let _ = affinity::set_thread_affinity(core_ids);
+                actor.run(shutdown)
+            })
+            .map_err(Error::StartingThread)?;
 
         self.threads.push(thread);
 
@@ -195,12 +201,15 @@ impl RespawnableHandle {
         let mut actor = ctx.boxed_actor()?;
         let shutdown = shutdown.clone();
 
-        let thread = settings.into_inner().spawn(move || {
-            if let Some(cores) = cores {
-                let _ = affinity::set_thread_affinity(cores);
-            }
-            actor.run(shutdown);
-        })?;
+        let thread = settings
+            .into_inner()
+            .spawn(move || {
+                if let Some(cores) = cores {
+                    let _ = affinity::set_thread_affinity(cores);
+                }
+                actor.run(shutdown);
+            })
+            .map_err(Error::StartingThread)?;
 
         Ok(Self {
             handle: Some(thread),
@@ -237,12 +246,15 @@ impl RespawnableHandle {
             let settings = self.context.settings();
             let mut actor = self.context.boxed_actor()?;
 
-            let thread = settings.into_inner().spawn(move || {
-                if let Some(cores) = cores {
-                    let _ = affinity::set_thread_affinity(cores);
-                }
-                actor.run(shutdown)
-            })?;
+            let thread = settings
+                .into_inner()
+                .spawn(move || {
+                    if let Some(cores) = cores {
+                        let _ = affinity::set_thread_affinity(cores);
+                    }
+                    actor.run(shutdown)
+                })
+                .map_err(Error::StartingThread)?;
 
             self.handle = Some(thread);
         }

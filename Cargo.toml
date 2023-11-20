@@ -11,13 +11,11 @@ repository = "https://github.com/Caelmyn/employees"
 readme = "README.md"
 description = "A small runtime that all the boilerplate when using threads."
 
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 affinity = "0.1.2"
 signal-hook = "0.3.17"
-thiserror = "1.0.48"
 minuteurs = { version = "1.0.1", optional = true }
 
 [dev-dependencies]

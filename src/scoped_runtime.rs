@@ -61,7 +61,8 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env> {
 
         let thread = settings
             .into_inner()
-            .spawn_scoped(self.scope, move || actor.run(shutdown))?;
+            .spawn_scoped(self.scope, move || actor.run(shutdown))
+            .map_err(Error::StartingThread)?;
 
         self.threads.push(thread);
 
@@ -91,10 +92,13 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env> {
         C: AsRef<[usize]> + Send + 'env,
     {
         let shutdown = self.shutdown.clone();
-        let thread = settings.into_inner().spawn_scoped(self.scope, move || {
-            let _ = affinity::set_thread_affinity(core_ids);
-            actor.run(shutdown)
-        })?;
+        let thread = settings
+            .into_inner()
+            .spawn_scoped(self.scope, move || {
+                let _ = affinity::set_thread_affinity(core_ids);
+                actor.run(shutdown)
+            })
+            .map_err(Error::StartingThread)?;
 
         self.threads.push(thread);
 
@@ -169,12 +173,15 @@ impl<'scope, 'env> RespawnableScopedHandle<'scope, 'env> {
         let mut actor = ctx.boxed_actor()?;
         let shutdown = shutdown.clone();
 
-        let thread = settings.into_inner().spawn_scoped(scope, move || {
-            if let Some(cores) = cores {
-                let _ = affinity::set_thread_affinity(cores);
-            }
-            actor.run(shutdown);
-        })?;
+        let thread = settings
+            .into_inner()
+            .spawn_scoped(scope, move || {
+                if let Some(cores) = cores {
+                    let _ = affinity::set_thread_affinity(cores);
+                }
+                actor.run(shutdown);
+            })
+            .map_err(Error::StartingThread)?;
 
         Ok(Self {
             scope,
@@ -212,12 +219,15 @@ impl<'scope, 'env> RespawnableScopedHandle<'scope, 'env> {
             let settings = self.context.settings();
             let mut actor = self.context.boxed_actor()?;
 
-            let thread = settings.into_inner().spawn_scoped(self.scope, move || {
-                if let Some(cores) = cores {
-                    let _ = affinity::set_thread_affinity(cores);
-                }
-                actor.run(shutdown)
-            })?;
+            let thread = settings
+                .into_inner()
+                .spawn_scoped(self.scope, move || {
+                    if let Some(cores) = cores {
+                        let _ = affinity::set_thread_affinity(cores);
+                    }
+                    actor.run(shutdown)
+                })
+                .map_err(Error::StartingThread)?;
 
             self.handle = Some(thread);
         }

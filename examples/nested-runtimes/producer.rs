@@ -50,7 +50,7 @@ impl Context for ProducersContext {
     fn into_actor(self) -> Result<Self::Target, Error> {
         let to_consumers = self
             .to_consumers
-            .ok_or(Error::InvalidContext("to_consumers".to_owned()))?;
+            .ok_or(Error::ContextArgumentMissing("to_consumers"))?;
 
         Ok(Producers {
             nb_prod: self.nb_prod,
