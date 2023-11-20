@@ -42,4 +42,8 @@ required-features = ["timing"]
 
 [[example]]
 name = "respawn"
-path = "examples/respawnv2/main.rs"
+path = "examples/respawn/main.rs"
+
+[[example]]
+name = "scoped-respawn"
+path = "examples/scoped-respawn/main.rs"

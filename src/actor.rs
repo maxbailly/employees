@@ -93,8 +93,8 @@ pub trait Context {
 
 /* ---------- */
 
-pub trait RespawnableContext {
-    fn boxed_actor(&self) -> Result<Box<dyn Worker>, Error>;
+pub trait RespawnableContext<'a> {
+    fn boxed_actor(&self) -> Result<Box<dyn Worker + 'a>, Error>;
 
     /// Returns some [`Settings`] used to configure runtime threads.
     ///

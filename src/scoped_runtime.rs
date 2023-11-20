@@ -121,7 +121,7 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env> {
     #[inline]
     pub fn launch_respawnable<M>(&mut self, ctx: M) -> Result<(), Error>
     where
-        M: RespawnableContext + 'static,
+        M: RespawnableContext<'env> + 'env,
     {
         let managed = RespawnableScopedHandle::spawn_managed(self.scope, ctx, &self.shutdown)?;
 
@@ -155,13 +155,13 @@ impl Drop for ScopedRuntime<'_, '_> {
 struct RespawnableScopedHandle<'scope, 'env> {
     scope: &'scope Scope<'scope, 'env>,
     handle: Option<ScopedJoinHandle<'scope, ()>>,
-    context: Box<dyn RespawnableContext + 'env>,
+    context: Box<dyn RespawnableContext<'env> + 'env>,
 }
 
 impl<'scope, 'env> RespawnableScopedHandle<'scope, 'env> {
     fn spawn_managed(
         scope: &'scope Scope<'scope, 'env>,
-        ctx: impl RespawnableContext + 'env,
+        ctx: impl RespawnableContext<'env> + 'env,
         shutdown: &Shutdown,
     ) -> Result<Self, Error> {
         let cores = ctx.core_pinning();

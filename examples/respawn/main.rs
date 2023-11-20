@@ -1,12 +1,12 @@
 use std::time::{Duration, Instant};
 
-use actor_pattern::*;
+use employees::*;
 
 /* ---------- */
 
 struct PanickingActor;
 
-impl Actor for PanickingActor {
+impl Worker for PanickingActor {
     fn on_start(&mut self) {
         println!("[ACTOR] starting the panicking actor")
     }
@@ -27,8 +27,8 @@ impl Drop for PanickingActor {
 
 struct PanickingActorContext;
 
-impl RespawnableContext for PanickingActorContext {
-    fn boxed_actor(&self) -> Result<Box<dyn Actor>, Error> {
+impl RespawnableContext<'_> for PanickingActorContext {
+    fn boxed_actor(&self) -> Result<Box<dyn Worker>, Error> {
         Ok(Box::new(PanickingActor))
     }
 }

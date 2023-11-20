@@ -125,7 +125,7 @@ impl<T: Type> Runtime<T> {
     #[inline]
     pub fn launch_respawnable<M>(&mut self, ctx: M) -> Result<(), Error>
     where
-        M: RespawnableContext + 'static,
+        M: RespawnableContext<'static> + 'static,
     {
         let managed = RespawnableHandle::spawn_managed(ctx, &self.shutdown)?;
 
@@ -182,12 +182,12 @@ impl<T: Type> Drop for Runtime<T> {
 
 struct RespawnableHandle {
     handle: Option<JoinHandle<()>>,
-    context: Box<dyn RespawnableContext>,
+    context: Box<dyn RespawnableContext<'static>>,
 }
 
 impl RespawnableHandle {
     fn spawn_managed(
-        ctx: impl RespawnableContext + 'static,
+        ctx: impl RespawnableContext<'static> + 'static,
         shutdown: &Shutdown,
     ) -> Result<Self, Error> {
         let cores = ctx.core_pinning();
