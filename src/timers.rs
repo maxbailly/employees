@@ -1,4 +1,4 @@
-pub use minuteurs::{Timer, Watcher};
+pub use minuteurs::*;
 
 use crate::{Connect, ControlFlow, Register, Worker};
 
