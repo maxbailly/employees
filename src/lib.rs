@@ -12,7 +12,6 @@
 //! Some similarities exist between a full-blown Entity Component System and this crate.
 //! In some regards, this crate can be viewed as an ECS without the C part.
 
-mod actor;
 mod error;
 mod runtime;
 mod scoped_runtime;
@@ -21,10 +20,11 @@ mod settings;
 #[cfg(feature = "timing")]
 pub mod timers;
 mod utils;
+mod worker;
 
-pub use actor::*;
 pub use error::*;
 pub use runtime::*;
 pub use scoped_runtime::*;
 pub use service::*;
 pub use utils::*;
+pub use worker::*;

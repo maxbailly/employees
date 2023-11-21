@@ -48,7 +48,7 @@ pub trait Worker: Send {
     }
 }
 
-impl<T: Worker> Worker for Box<T> {
+impl<T: Worker + ?Sized> Worker for Box<T> {
     #[inline]
     fn on_start(&mut self) {
         self.deref_mut().on_start()

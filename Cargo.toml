@@ -9,7 +9,7 @@ license = "MIT"
 documentation = "https://docs.rs/employees"
 repository = "https://github.com/Caelmyn/employees"
 readme = "README.md"
-description = "A small runtime that all the boilerplate when using threads."
+description = "A small runtime that hides all the boilerplate when using threads."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

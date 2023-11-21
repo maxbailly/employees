@@ -1,8 +1,8 @@
 use std::thread::{Scope, ScopedJoinHandle};
 
-use crate::actor::Worker;
 use crate::settings::Settings;
 use crate::utils::Shutdown;
+use crate::worker::Worker;
 use crate::{Context, Error, RespawnableContext};
 
 /* ---------- */
@@ -46,86 +46,63 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env> {
 
     /// Runs an [`Actor`] in a new thread.
     #[inline]
-    pub fn launch<A: Worker + 'env>(&mut self, actor: A) -> Result<(), Error> {
-        self.launch_with_settings(actor, Settings::default())
+    pub fn launch<W: Worker + 'env>(&mut self, worker: W) -> Result<(), Error> {
+        self.inner_spawn_thread(worker, Settings::default(), None::<Vec<_>>)
     }
 
     /// Runs an [`Actor`] in a new configured thread.
     #[inline]
-    pub fn launch_with_settings<A: Worker + 'env>(
+    pub fn launch_with_settings<W: Worker + 'env>(
         &mut self,
-        mut actor: A,
+        worker: W,
         settings: Settings,
     ) -> Result<(), Error> {
-        let shutdown = self.shutdown.clone();
-
-        let thread = settings
-            .into_inner()
-            .spawn_scoped(self.scope, move || actor.run(shutdown))
-            .map_err(Error::Thread)?;
-
-        self.threads.push(thread);
-
-        Ok(())
+        self.inner_spawn_thread(worker, settings, None::<Vec<_>>)
     }
 
     /// Runs an [`Actor`] in a new thread where its thread is pinned to given cpu cores.
     #[inline]
-    pub fn launch_pinned<A, C>(&mut self, actor: A, core_ids: C) -> Result<(), Error>
+    pub fn launch_pinned<W, C>(&mut self, worker: W, cores: C) -> Result<(), Error>
     where
-        A: Worker + 'env,
+        W: Worker + 'env,
         C: AsRef<[usize]> + Send + 'env,
     {
-        self.launch_pinned_with_settings(actor, core_ids, Settings::default())
+        self.launch_pinned_with_settings(worker, cores, Settings::default())
     }
 
     /// Runs an [`Actor`] in a new configured thread where its thread is pinned to given cpu cores.
     #[inline]
-    pub fn launch_pinned_with_settings<A, C>(
+    pub fn launch_pinned_with_settings<W, C>(
         &mut self,
-        mut actor: A,
-        core_ids: C,
+        worker: W,
+        cores: C,
         settings: Settings,
     ) -> Result<(), Error>
     where
-        A: Worker + 'env,
+        W: Worker + 'env,
         C: AsRef<[usize]> + Send + 'env,
     {
-        let shutdown = self.shutdown.clone();
-        let thread = settings
-            .into_inner()
-            .spawn_scoped(self.scope, move || {
-                let _ = affinity::set_thread_affinity(core_ids);
-                actor.run(shutdown)
-            })
-            .map_err(Error::Thread)?;
-
-        self.threads.push(thread);
-
-        Ok(())
+        self.inner_spawn_thread(worker, settings, Some(cores))
     }
 
     /// Runs an [`Actor`] built from a context in a new thread.
     #[inline]
-    pub fn launch_from_context<A, B>(&mut self, ctx: B) -> Result<(), Error>
+    pub fn launch_from_context<W, C>(&mut self, ctx: C) -> Result<(), Error>
     where
-        A: Worker + 'env,
-        B: Context<Target = A>,
+        W: Worker + 'env,
+        C: Context<Target = W>,
     {
         let settings = ctx.settings();
         let cores = ctx.core_pinning();
-        let actor = ctx.into_actor()?;
+        let worker = ctx.into_actor()?;
 
-        match cores {
-            Some(cores) => self.launch_pinned_with_settings(actor, cores, settings),
-            None => self.launch_with_settings(actor, settings),
-        }
+        self.inner_spawn_thread(worker, settings, cores)
     }
 
     #[inline]
-    pub fn launch_respawnable<M>(&mut self, ctx: M) -> Result<(), Error>
+    pub fn launch_respawnable<R>(&mut self, ctx: R) -> Result<(), Error>
     where
-        M: RespawnableContext<'env> + 'env,
+        R: RespawnableContext<'env> + 'env,
     {
         let managed = RespawnableScopedHandle::spawn_managed(self.scope, ctx, &self.shutdown)?;
 
@@ -139,6 +116,24 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env> {
             // TODO: Do something with the errors
             let _ = managed.respawn_if_panicked(&self.shutdown);
         })
+    }
+
+    #[inline]
+    fn inner_spawn_thread<W, C>(
+        &mut self,
+        worker: W,
+        settings: Settings,
+        cores: Option<C>,
+    ) -> Result<(), Error>
+    where
+        W: Worker + 'env,
+        C: AsRef<[usize]> + Send + 'env,
+    {
+        let thread =
+            crate::utils::spawn_scoped_thread(self.scope, worker, settings, cores, &self.shutdown)?;
+
+        self.threads.push(thread);
+        Ok(())
     }
 }
 
@@ -163,6 +158,7 @@ struct RespawnableScopedHandle<'scope, 'env> {
 }
 
 impl<'scope, 'env> RespawnableScopedHandle<'scope, 'env> {
+    #[inline]
     fn spawn_managed(
         scope: &'scope Scope<'scope, 'env>,
         ctx: impl RespawnableContext<'env> + 'env,
@@ -170,18 +166,9 @@ impl<'scope, 'env> RespawnableScopedHandle<'scope, 'env> {
     ) -> Result<Self, Error> {
         let cores = ctx.core_pinning();
         let settings = ctx.settings();
-        let mut actor = ctx.boxed_actor()?;
-        let shutdown = shutdown.clone();
+        let worker = ctx.boxed_actor()?;
 
-        let thread = settings
-            .into_inner()
-            .spawn_scoped(scope, move || {
-                if let Some(cores) = cores {
-                    let _ = affinity::set_thread_affinity(cores);
-                }
-                actor.run(shutdown);
-            })
-            .map_err(Error::Thread)?;
+        let thread = crate::utils::spawn_scoped_thread(scope, worker, settings, cores, shutdown)?;
 
         Ok(Self {
             scope,
@@ -214,20 +201,12 @@ impl<'scope, 'env> RespawnableScopedHandle<'scope, 'env> {
         // At this point, self.handle is always Some.
         let handle = unsafe { self.handle.take().unwrap_unchecked() };
         if handle.join().is_err() {
-            let shutdown = shutdown.clone();
             let cores = self.context.core_pinning();
             let settings = self.context.settings();
-            let mut actor = self.context.boxed_actor()?;
+            let worker = self.context.boxed_actor()?;
 
-            let thread = settings
-                .into_inner()
-                .spawn_scoped(self.scope, move || {
-                    if let Some(cores) = cores {
-                        let _ = affinity::set_thread_affinity(cores);
-                    }
-                    actor.run(shutdown)
-                })
-                .map_err(Error::Thread)?;
+            let thread =
+                crate::utils::spawn_scoped_thread(self.scope, worker, settings, cores, shutdown)?;
 
             self.handle = Some(thread);
         }
@@ -245,7 +224,7 @@ mod tests {
     use rand::Rng;
 
     use super::*;
-    use crate::actor::{ControlFlow, Worker};
+    use crate::worker::{ControlFlow, Worker};
 
     struct TestActor;
     impl Worker for TestActor {
