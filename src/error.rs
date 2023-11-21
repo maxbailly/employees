@@ -1,4 +1,3 @@
-use std::error;
 use std::fmt::{Debug, Display, Formatter, Result};
 
 /* ---------- */
@@ -6,7 +5,7 @@ use std::fmt::{Debug, Display, Formatter, Result};
 pub enum Error {
     Context(Box<dyn Display + Send + Sync>),
     Thread(std::io::Error),
-    Other(Box<dyn error::Error + Send + Sync>),
+    Other(Box<dyn Display + Send + Sync>),
 }
 
 impl Error {
@@ -23,7 +22,7 @@ impl Error {
 
     pub fn other<E>(err: E) -> Self
     where
-        E: error::Error + Send + Sync + 'static,
+        E: Display + Send + Sync + 'static,
     {
         Self::Other(Box::new(err))
     }
@@ -34,7 +33,7 @@ impl Debug for Error {
         match self {
             Error::Context(inner) => f.debug_tuple("Context").field(&format!("{inner}")).finish(),
             Error::Thread(inner) => f.debug_tuple("Thread").field(inner).finish(),
-            Error::Other(inner) => f.debug_tuple("Other").field(inner).finish(),
+            Error::Other(inner) => f.debug_tuple("Other").field(&format!("{inner}")).finish(),
         }
     }
 }
@@ -49,4 +48,4 @@ impl Display for Error {
     }
 }
 
-impl error::Error for Error {}
+impl std::error::Error for Error {}
