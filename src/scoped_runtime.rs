@@ -94,7 +94,7 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env> {
     {
         let settings = ctx.settings();
         let cores = ctx.core_pinning();
-        let worker = ctx.into_actor()?;
+        let worker = ctx.into_worker()?;
 
         self.inner_spawn_thread(worker, settings, cores)
     }
@@ -166,7 +166,7 @@ impl<'scope, 'env> RespawnableScopedHandle<'scope, 'env> {
     ) -> Result<Self, Error> {
         let cores = ctx.core_pinning();
         let settings = ctx.settings();
-        let worker = ctx.boxed_actor()?;
+        let worker = ctx.boxed_worker()?;
 
         let thread = crate::utils::spawn_scoped_thread(scope, worker, settings, cores, shutdown)?;
 
@@ -203,7 +203,7 @@ impl<'scope, 'env> RespawnableScopedHandle<'scope, 'env> {
         if handle.join().is_err() {
             let cores = self.context.core_pinning();
             let settings = self.context.settings();
-            let worker = self.context.boxed_actor()?;
+            let worker = self.context.boxed_worker()?;
 
             let thread =
                 crate::utils::spawn_scoped_thread(self.scope, worker, settings, cores, shutdown)?;

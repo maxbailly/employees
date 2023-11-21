@@ -28,7 +28,7 @@ impl Drop for PanickingActor {
 struct PanickingActorContext;
 
 impl RespawnableContext<'_> for PanickingActorContext {
-    fn boxed_actor(&self) -> Result<Box<dyn Worker>, Error> {
+    fn boxed_worker(&self) -> Result<Box<dyn Worker>, Error> {
         Ok(Box::new(PanickingActor))
     }
 }

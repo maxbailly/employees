@@ -101,7 +101,7 @@ impl<T: Type> Runtime<T> {
     {
         let settings = ctx.settings();
         let cores = ctx.core_pinning();
-        let worker = ctx.into_actor()?;
+        let worker = ctx.into_worker()?;
 
         self.inner_spawn_thread(worker, settings, cores)
     }
@@ -194,7 +194,7 @@ impl RespawnableHandle {
     ) -> Result<Self, Error> {
         let cores = ctx.core_pinning();
         let settings = ctx.settings();
-        let worker = ctx.boxed_actor()?;
+        let worker = ctx.boxed_worker()?;
 
         let thread = crate::utils::spawn_thread(worker, settings, cores, shutdown)?;
 
@@ -230,7 +230,7 @@ impl RespawnableHandle {
         if handle.join().is_err() {
             let cores = self.context.core_pinning();
             let settings = self.context.settings();
-            let worker = self.context.boxed_actor()?;
+            let worker = self.context.boxed_worker()?;
 
             let thread = crate::utils::spawn_thread(worker, settings, cores, shutdown)?;
             self.handle = Some(thread);

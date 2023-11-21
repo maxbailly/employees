@@ -33,7 +33,7 @@ struct PanickingActorContext<'a> {
 }
 
 impl<'a> RespawnableContext<'a> for PanickingActorContext<'a> {
-    fn boxed_actor(&self) -> Result<Box<dyn Worker + 'a>, Error> {
+    fn boxed_worker(&self) -> Result<Box<dyn Worker + 'a>, Error> {
         Ok(Box::new(PanickingActor { name: self.name }))
     }
 }

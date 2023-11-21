@@ -47,7 +47,7 @@ impl ConsumersContext {
 impl Context for ConsumersContext {
     type Target = Consumers;
 
-    fn into_actor(self) -> Result<Self::Target, Error> {
+    fn into_worker(self) -> Result<Self::Target, Error> {
         Ok(Consumers {
             nb_cons: self.nb_cons,
             from_producers: self.from_producers,

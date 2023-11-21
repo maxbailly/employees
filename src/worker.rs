@@ -73,7 +73,7 @@ pub trait Context {
     type Target: Worker;
 
     /// Consumes `self` to build the targeted [`Actor`] from the context.
-    fn into_actor(self) -> Result<Self::Target, Error>;
+    fn into_worker(self) -> Result<Self::Target, Error>;
 
     /// Returns some [`Settings`] used to configure runtime threads.
     ///
@@ -94,7 +94,7 @@ pub trait Context {
 /* ---------- */
 
 pub trait RespawnableContext<'a> {
-    fn boxed_actor(&self) -> Result<Box<dyn Worker + 'a>, Error>;
+    fn boxed_worker(&self) -> Result<Box<dyn Worker + 'a>, Error>;
 
     /// Returns some [`Settings`] used to configure runtime threads.
     ///
