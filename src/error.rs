@@ -42,9 +42,7 @@ impl Debug for Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
-            Self::Context(arg_name) => {
-                write!(f, "Missing argument {arg_name} in context")
-            }
+            Self::Context(reason) => write!(f, "Invalid context {reason}"),
             Self::Thread(err) => write!(f, "Failed to run worker thread: {err}"),
             Self::Other(err) => write!(f, "Failed launch worker: {err}"),
         }
@@ -52,5 +50,3 @@ impl Display for Error {
 }
 
 impl error::Error for Error {}
-
-/* ---------- */
