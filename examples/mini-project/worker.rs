@@ -38,11 +38,8 @@ impl Context for MyWorkerContext {
     type Target = MyWorker;
 
     fn into_actor(self) -> Result<Self::Target, Error> {
-        let period = self.period.ok_or(Error::ContextArgumentMissing("period"))?;
-
-        let to_aggreg = self
-            .to_aggreg
-            .ok_or(Error::ContextArgumentMissing("to_aggreg"))?;
+        let period = self.period.ok_or(Error::context("period"))?;
+        let to_aggreg = self.to_aggreg.ok_or(Error::context("to_aggreg"))?;
 
         Ok(MyWorker { period, to_aggreg })
     }

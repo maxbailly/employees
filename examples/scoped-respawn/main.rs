@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 
+use anyhow::{Context, Result as AnyResult};
 use employees::*;
 
 /* ---------- */
@@ -39,19 +40,19 @@ impl<'a> RespawnableContext<'a> for PanickingActorContext<'a> {
 
 /* ---------- */
 
-fn main() {
+fn main() -> AnyResult<()> {
     let name = String::from("toto");
     let context = PanickingActorContext {
         name: name.as_str(),
     };
 
-    std::thread::scope(|scope| {
+    std::thread::scope(|scope| -> AnyResult<()> {
         let mut runtime = ScopedRuntime::new(scope);
 
         runtime.enable_graceful_shutdown();
         runtime
             .launch_respawnable(context)
-            .expect("[MAIN] failed to launch the running actor");
+            .context("failed to spawn the panicking worker")?;
 
         let timeout = Duration::from_secs(5);
         let now = Instant::now();
@@ -62,6 +63,8 @@ fn main() {
             runtime.health_check();
         }
 
-        runtime.stop()
-    });
+        runtime.stop();
+
+        Ok(())
+    })
 }

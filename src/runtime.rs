@@ -68,7 +68,7 @@ impl<T: Type> Runtime<T> {
         let thread = settings
             .into_inner()
             .spawn(move || actor.run(shutdown))
-            .map_err(Error::StartingThread)?;
+            .map_err(Error::Thread)?;
 
         self.threads.push(thread);
 
@@ -104,7 +104,7 @@ impl<T: Type> Runtime<T> {
                 let _ = affinity::set_thread_affinity(core_ids);
                 actor.run(shutdown)
             })
-            .map_err(Error::StartingThread)?;
+            .map_err(Error::Thread)?;
 
         self.threads.push(thread);
 
@@ -209,7 +209,7 @@ impl RespawnableHandle {
                 }
                 actor.run(shutdown);
             })
-            .map_err(Error::StartingThread)?;
+            .map_err(Error::Thread)?;
 
         Ok(Self {
             handle: Some(thread),
@@ -254,7 +254,7 @@ impl RespawnableHandle {
                     }
                     actor.run(shutdown)
                 })
-                .map_err(Error::StartingThread)?;
+                .map_err(Error::Thread)?;
 
             self.handle = Some(thread);
         }

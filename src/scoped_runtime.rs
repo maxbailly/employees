@@ -62,7 +62,7 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env> {
         let thread = settings
             .into_inner()
             .spawn_scoped(self.scope, move || actor.run(shutdown))
-            .map_err(Error::StartingThread)?;
+            .map_err(Error::Thread)?;
 
         self.threads.push(thread);
 
@@ -98,7 +98,7 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env> {
                 let _ = affinity::set_thread_affinity(core_ids);
                 actor.run(shutdown)
             })
-            .map_err(Error::StartingThread)?;
+            .map_err(Error::Thread)?;
 
         self.threads.push(thread);
 
@@ -181,7 +181,7 @@ impl<'scope, 'env> RespawnableScopedHandle<'scope, 'env> {
                 }
                 actor.run(shutdown);
             })
-            .map_err(Error::StartingThread)?;
+            .map_err(Error::Thread)?;
 
         Ok(Self {
             scope,
@@ -227,7 +227,7 @@ impl<'scope, 'env> RespawnableScopedHandle<'scope, 'env> {
                     }
                     actor.run(shutdown)
                 })
-                .map_err(Error::StartingThread)?;
+                .map_err(Error::Thread)?;
 
             self.handle = Some(thread);
         }

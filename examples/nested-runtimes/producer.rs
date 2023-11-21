@@ -48,9 +48,7 @@ impl Context for ProducersContext {
     type Target = Producers;
 
     fn into_actor(self) -> Result<Self::Target, Error> {
-        let to_consumers = self
-            .to_consumers
-            .ok_or(Error::ContextArgumentMissing("to_consumers"))?;
+        let to_consumers = self.to_consumers.ok_or(Error::context("to_consumers"))?;
 
         Ok(Producers {
             nb_prod: self.nb_prod,

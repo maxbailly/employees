@@ -56,7 +56,7 @@ impl Context for AggregatorContext {
     type Target = Aggregator;
 
     fn into_actor(self) -> Result<Self::Target, Error> {
-        let period = self.period.ok_or(Error::ContextArgumentMissing("period"))?;
+        let period = self.period.ok_or(Error::context("period"))?;
 
         Ok(Aggregator {
             period,
