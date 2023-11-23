@@ -8,7 +8,7 @@ use crate::{Context, Error, RespawnableContext};
 
 /* ---------- */
 
-/// A runtime to manage [`Actor`]s scoped threads.
+/// A runtime to manage [`Worker`]s scoped threads.
 pub struct ScopedRuntime<'scope, 'env, T: Type> {
     scope: &'scope Scope<'scope, 'env>,
 
@@ -42,7 +42,7 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env, Root> {
         crate::utils::enable_graceful_shutdown(&self.shutdown)
     }
 
-    /// Stops the runtime, asking for all running actors to stop their loops.
+    /// Stops the runtime, asking for all running workers to stop their loops.
     #[inline]
     pub fn stop(&self) {
         self.shutdown.stop()
@@ -62,13 +62,13 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env, Nested> {
 }
 
 impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
-    /// Runs an [`Actor`] in a new thread.
+    /// Runs an [`Worker`] in a new thread.
     #[inline]
     pub fn launch<W: Worker + 'env>(&mut self, worker: W) -> Result<(), Error> {
         self.inner_spawn_thread(worker, Settings::default(), None::<Vec<_>>)
     }
 
-    /// Runs an [`Actor`] in a new configured thread.
+    /// Runs an [`Worker`] in a new configured thread.
     #[inline]
     pub fn launch_with_settings<W: Worker + 'env>(
         &mut self,
@@ -78,7 +78,7 @@ impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
         self.inner_spawn_thread(worker, settings, None::<Vec<_>>)
     }
 
-    /// Runs an [`Actor`] in a new thread where its thread is pinned to given cpu cores.
+    /// Runs an [`Worker`] in a new thread where its thread is pinned to given cpu cores.
     #[inline]
     pub fn launch_pinned<W, C>(&mut self, worker: W, cores: C) -> Result<(), Error>
     where
@@ -88,7 +88,7 @@ impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
         self.launch_pinned_with_settings(worker, cores, Settings::default())
     }
 
-    /// Runs an [`Actor`] in a new configured thread where its thread is pinned to given cpu cores.
+    /// Runs an [`Worker`] in a new configured thread where its thread is pinned to given cpu cores.
     #[inline]
     pub fn launch_pinned_with_settings<W, C>(
         &mut self,
@@ -103,7 +103,7 @@ impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
         self.inner_spawn_thread(worker, settings, Some(cores))
     }
 
-    /// Runs an [`Actor`] built from a context in a new thread.
+    /// Runs an [`Worker`] built from a context in a new thread.
     #[inline]
     pub fn launch_from_context<W, C>(&mut self, ctx: C) -> Result<(), Error>
     where
@@ -117,6 +117,7 @@ impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
         self.inner_spawn_thread(worker, settings, cores)
     }
 
+    /// Runs a [`Worker`] that can be respawned if it panics.
     #[inline]
     pub fn launch_respawnable<R>(&mut self, ctx: R) -> Result<(), Error>
     where
@@ -128,6 +129,7 @@ impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
         Ok(())
     }
 
+    /// Checks all respawnable [`Worker`]s, respawning the ones that panicked.
     #[inline]
     pub fn health_check(&mut self) {
         self.managed.iter_mut().for_each(|managed| {

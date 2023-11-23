@@ -6,9 +6,9 @@ use crate::Error;
 
 /* ---------- */
 
-/// A trait to implement on types that behave as actors.
+/// A trait to implement on types that behave as workers.
 pub trait Worker: Send {
-    /// First method to be called when the [`Actor`]'s thread is spawned.
+    /// First method to be called when the [`Worker`]'s thread is spawned.
     ///
     /// By default, this does nothing. One can override this method to
     /// add some behaviour when the thread is spawned.
@@ -16,7 +16,7 @@ pub trait Worker: Send {
     fn on_start(&mut self) {}
 
     /// Called in a infinite loop, until either [`ControlFlow::Break`] is returned
-    /// or the runtime in which the actor runs is shutdown.
+    /// or the runtime in which the worker runs is shutdown.
     ///
     /// By default, this method just returns [`ControlFlow::Break`].
     #[inline]
@@ -24,14 +24,14 @@ pub trait Worker: Send {
         ControlFlow::Break
     }
 
-    /// Main loop of an actor.
+    /// Main loop of an worker.
     ///
     /// Called by the runtime when using calling one of the [`Runtime::launch`] functions.
     ///
-    /// By default, this first calls [`Actor::on_start`] then [`Actor::on_update`] in a loop that spins until [`shutdown.is_running()`]
+    /// By default, this first calls [`Worker::on_start`] then [`Worker::on_update`] in a loop that spins until [`shutdown.is_running()`]
     /// returns `false`.
     ///
-    /// One can override this to change the behaviour of an actor's main loop or when specific needs aren't provided by the default
+    /// One can override this to change the behaviour of an worker's main loop or when specific needs aren't provided by the default
     /// implementation.
     ///
     /// [`Runtime::launch`]: crate::Runtime::launch
@@ -67,12 +67,12 @@ impl<T: Worker + ?Sized> Worker for Box<T> {
 
 /* ---------- */
 
-/// A trait to build an [`Actor`] from values computed before launching said actor.
+/// A trait to build an [`Worker`] from values computed before launching said worker.
 pub trait Context {
-    /// The type of the [`Actor`] related to this this context.
+    /// The type of the [`Worker`] related to this this context.
     type Target: Worker;
 
-    /// Consumes `self` to build the targeted [`Actor`] from the context.
+    /// Consumes `self` to build the targeted [`Worker`] from the context.
     fn into_worker(self) -> Result<Self::Target, Error>;
 
     /// Returns some [`Settings`] used to configure runtime threads.
@@ -82,7 +82,8 @@ pub trait Context {
     fn settings(&self) -> Settings {
         Settings::default()
     }
-    /// Returns some cpu IDs to pin [`Actor`] threads to.
+
+    /// Returns some cpu IDs to pin [`Worker`] threads to.
     ///
     /// When not implemented, it returns `None`.
     #[inline]
@@ -93,7 +94,10 @@ pub trait Context {
 
 /* ---------- */
 
+/// This trait is very similar to the [`Context`] but is needed for worker to be respawned.
 pub trait RespawnableContext<'a> {
+    /// Similar to [`Context::into_worker`] but this function doesn't consume `self`
+    /// and returns a boxed dyn [`Worker`].
     fn boxed_worker(&self) -> Result<Box<dyn Worker + 'a>, Error>;
 
     /// Returns some [`Settings`] used to configure runtime threads.
@@ -102,7 +106,8 @@ pub trait RespawnableContext<'a> {
     fn settings(&self) -> Settings {
         Settings::default()
     }
-    /// Returns some cpu IDs to pin [`Actor`] threads to.
+
+    /// Returns some cpu IDs to pin [`Worker`] threads to.
     ///
     /// When not implemented, it returns `None`.
     fn core_pinning(&self) -> Option<Vec<usize>> {
@@ -112,7 +117,7 @@ pub trait RespawnableContext<'a> {
 
 /* ---------- */
 
-/// Defines variants to allow an [`Actor`] to shut itself down prematurely.
+/// Defines the control flow of [`Worker`]s.
 #[derive(Debug, PartialEq)]
 pub enum ControlFlow {
     /// Tells the runtime to continue the actor's loop.
