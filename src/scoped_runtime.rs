@@ -1,23 +1,26 @@
+use std::marker::PhantomData;
 use std::thread::{Scope, ScopedJoinHandle};
 
 use crate::settings::Settings;
-use crate::utils::Shutdown;
+use crate::utils::{Nested, Root, Shutdown, Type};
 use crate::worker::Worker;
 use crate::{Context, Error, RespawnableContext};
 
 /* ---------- */
 
 /// A runtime to manage [`Actor`]s scoped threads.
-pub struct ScopedRuntime<'scope, 'env> {
+pub struct ScopedRuntime<'scope, 'env, T: Type> {
     scope: &'scope Scope<'scope, 'env>,
 
     threads: Vec<ScopedJoinHandle<'scope, ()>>,
     managed: Vec<RespawnableScopedHandle<'scope, 'env>>,
 
     shutdown: Shutdown,
+
+    _type: PhantomData<T>,
 }
 
-impl<'scope, 'env> ScopedRuntime<'scope, 'env> {
+impl<'scope, 'env> ScopedRuntime<'scope, 'env, Root> {
     /// Returns a new runtime bound to the `scope`.
     #[inline]
     pub fn new(scope: &'scope Scope<'scope, 'env>) -> Self {
@@ -26,6 +29,7 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env> {
             threads: Vec::new(),
             managed: Vec::new(),
             shutdown: Shutdown::new(),
+            _type: PhantomData,
         }
     }
 
@@ -43,7 +47,21 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env> {
     pub fn stop(&self) {
         self.shutdown.stop()
     }
+}
 
+impl<'scope, 'env> ScopedRuntime<'scope, 'env, Nested> {
+    pub fn nested(scope: &'scope Scope<'scope, 'env>, shutdown: Shutdown) -> Self {
+        Self {
+            scope,
+            threads: Vec::new(),
+            managed: Vec::new(),
+            shutdown,
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
     /// Runs an [`Actor`] in a new thread.
     #[inline]
     pub fn launch<W: Worker + 'env>(&mut self, worker: W) -> Result<(), Error> {
@@ -137,7 +155,7 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env> {
     }
 }
 
-impl Drop for ScopedRuntime<'_, '_> {
+impl<T: Type> Drop for ScopedRuntime<'_, '_, T> {
     fn drop(&mut self) {
         for thread in self.threads.drain(..) {
             let _ = thread.join();

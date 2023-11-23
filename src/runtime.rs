@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 use std::thread::JoinHandle;
 
 use crate::settings::Settings;
-use crate::utils::Shutdown;
+use crate::utils::{Nested, Root, Shutdown, Type};
 use crate::worker::{Context, RespawnableContext, Worker};
 use crate::Error;
 
@@ -239,15 +239,3 @@ impl RespawnableHandle {
         Ok(())
     }
 }
-
-/* ---------- */
-
-pub trait Type {}
-
-#[derive(Debug)]
-pub enum Root {}
-impl Type for Root {}
-
-#[derive(Debug)]
-pub enum Nested {}
-impl Type for Nested {}
