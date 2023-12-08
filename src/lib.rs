@@ -1,4 +1,4 @@
-//! A small and lightweight crate to hide all the boilerplate when working with threads.
+//! A small and lightweight crate to hide most of the burden of setting up threads.
 //!
 //! # Philosophy
 //!

@@ -4,13 +4,18 @@ use std::fmt::{Debug, Display, Formatter, Result};
 
 /* ---------- */
 
+/// Kinds of error that might happen.
 pub enum Error {
+    /// Something went wrong when building a worker from a context.
     Context(Box<dyn Display + Send + Sync>),
+    /// Something went wrong when spawning a thread.
     Thread(std::io::Error),
+    /// Other kinds of error.
     Other(Box<dyn Display + Send + Sync>),
 }
 
 impl Error {
+    /// Returns a new [`Error::Context`] from `reason`.
     pub fn context<D>(reason: D) -> Self
     where
         D: Display + Send + Sync + 'static,
@@ -18,10 +23,12 @@ impl Error {
         Self::Context(Box::new(reason))
     }
 
+    /// Returns a new [`Error::Thread`].
     pub fn thread(err: std::io::Error) -> Self {
         Self::Thread(err)
     }
 
+    /// Returns a new [`Error::Other`] from some error.
     pub fn other<E>(err: E) -> Self
     where
         E: Display + Send + Sync + 'static,
