@@ -1,3 +1,5 @@
+//! Miscellaneous stuff and utils.
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::{JoinHandle, Scope, ScopedJoinHandle};
@@ -125,20 +127,23 @@ impl Clone for Shutdown {
 
 /// The type of a runtime.
 ///
-/// [`Runtime`]s (and [`ScopedRuntime`]s) can have two different state that defines their ability to stop the execution of their workers.
+/// [`Runtimes`] can have two different state that defines their ability to stop the execution of their workers.
 /// Particularely, a [`Root`] runtime can stop its execution itself by calling the `stop()` or the `enable_graceful_shutdown()` functions.
 /// [`Nested`] runtimes, on the other hand, can't do this as their stop condition is inherited by the "parent" runtime.
 ///
-/// [`Runtime`]: crate::Runtime
-/// [`ScopedRuntime`]: crate::ScopedRuntime
+/// [`Runtimes`]: crate::Runtime
 pub trait Type {}
 
-/// Marker type for a default runtime. See the [`Type`] documentation for more informations.
+/// Marker type for a default runtime.
+///
+/// See the [`Type`] documentation for more informations.
 #[derive(Debug)]
 pub enum Root {}
 impl Type for Root {}
 
-/// Marker type for a runtime spawned in and controlled by another runtime. See the [`Type`] documentation for more informations.
+/// Marker type for a runtime spawned in and controlled by another runtime.
+///
+/// See the [`Type`] documentation for more informations.
 #[derive(Debug)]
 pub enum Nested {}
 impl Type for Nested {}

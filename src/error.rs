@@ -1,3 +1,5 @@
+//! The various errors implementations.
+
 use std::fmt::{Debug, Display, Formatter, Result};
 
 /* ---------- */

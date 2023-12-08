@@ -3,7 +3,7 @@ use std::thread::Builder;
 
 /* ---------- */
 
-/// Used to configure the properties of a new actor's thread.
+/// Used to configure the properties of a worker's thread.
 pub struct Settings(Builder);
 
 impl Settings {

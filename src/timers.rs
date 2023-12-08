@@ -1,3 +1,7 @@
+//! Re-exports and implementations for types from the [`minuteurs`] crate.
+//!
+//! [`minuteurs`]: <https://docs.rs/minuteurs/latest/minuteurs/>
+
 pub use minuteurs::*;
 
 use crate::{Connect, ControlFlow, Register, Worker};

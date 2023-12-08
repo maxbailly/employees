@@ -5,9 +5,10 @@
 //! This crate sees threads as unique entities called `workers` which live as long as the program lives.
 //!
 //! One may notice many similarities with async `tasks` but there is one major difference.
-//! While `tasks` are designed to be short and non-blocking pieces of concurrent code, `workers` on the other hand
-//! are the complete opposite:
-//! - they are designed to run for a very long time.
+//! While `tasks` are designed to be short and non-blocking pieces of concurrent code running in async runtimes,
+//! `workers` on the other hand are the complete opposite:
+//! - they run on their own OS thread.
+//! - they are designed to run for a very long time (mostly for the lifetime of the program).
 //! - they can block on operations as long as they (mostly) want without impacting other `workers`.
 //!
 //! Some similarities exist between a full-blown Entity Component System and this crate.
@@ -15,7 +16,7 @@
 //!
 //! # Usage
 //!
-//! Here's a small example that spawns a worker that prints "Hello, World!" each second for 3 secs.
+//! Here's a small example that spawns a worker that prints "Hello, World!" every 100ms for 1 second.
 //!
 //! ```
 //! # use employees::{Runtime, Worker, ControlFlow};
@@ -24,7 +25,7 @@
 //! impl Worker for WorkerThatPrints {
 //!     fn on_update(&mut self) -> ControlFlow {
 //!         println!("Hello, World!");
-//!         std::thread::sleep(Duration::from_secs(3));
+//!         std::thread::sleep(Duration::from_millis(100));
 //!         ControlFlow::Continue
 //!     }
 //! }
@@ -32,17 +33,22 @@
 //! let mut runtime = Runtime::new();
 //!
 //! runtime.launch(WorkerThatPrints);
-//! std::thread::sleep(Duration::from_secs(3));
+//! std::thread::sleep(Duration::from_secs(1));
 //! runtime.stop();
 //! ```
 //!
 //! # Features
 //!
-//! [`Runtime`]s and [`Worker`]s comes with a set of various features and helpers to setup and run them.
+//! [`Runtimes`] and [`Workers`] comes with a set of various features and helpers to setup and run them.
+//!
+//! [`Runtimes`]: crate::Runtime
+//! [`Workers`]: crate::Worker
 //!
 //! ## Runtimes and non-`'static` things
 //!
-//! [`Runtime`]s need `'static` lifetimes, therefore the following example won't compile.
+//! [`Runtimes`] need `'static` lifetimes, therefore the following example won't compile.
+//!
+//! [`Runtimes`]: crate::Runtime
 //!
 //! ```compile_fail
 //! # use employees::{Runtime, Worker, ControlFlow};
@@ -61,7 +67,10 @@
 //! runtime.launch(worker); // worker isn't 'static!
 //! ```
 //!
-//! Fortunately, this crate provides [`ScopedRuntime`]s. They are a 1 to 1 implementation of classic [`Runtime`]s except that they need a scope.
+//! Fortunately, this crate provides [`ScopedRuntimes`]. They are a 1 to 1 implementation of classic [`Runtimes`] except that they need a scope.
+//!
+//! [`Runtimes`]: crate::Runtime
+//! [`ScopedRuntimes`]: crate::ScopedRuntime
 //!
 //! ```
 //! # use employees::{ScopedRuntime, Worker, ControlFlow};

@@ -8,9 +8,11 @@ use crate::Error;
 
 /* ---------- */
 
-/// A runtime that manages [`Worker`]s threads.
+/// A runtime that manages [`Workers`] threads.
 ///
 /// If the runtime is dropped, all threads are automatically joined.
+///
+/// [`Workers`]: crate::Worker
 #[derive(Default)]
 pub struct Runtime<T: Type> {
     shutdown: Shutdown,
@@ -118,7 +120,41 @@ impl<T: Type> Runtime<T> {
         Ok(())
     }
 
-    /// Checks all respawnable [`Worker`]s, respawning the ones that panicked.
+    /// Checks all respawnable [`Workers`], respawning the ones that panicked.
+    ///
+    /// Workers that finished but didn't panic are simply dropped.
+    ///
+    /// [`Workers`]: crate::Worker
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use employees::*;
+    /// # use std::time::Duration;
+    /// // A worker that panic some time after being spawned...
+    /// struct PanickingWorker;
+    /// impl Worker for PanickingWorker {
+    ///     fn on_update(&mut self) -> ControlFlow {
+    ///         std::thread::sleep(Duration::from_secs(1));
+    ///         panic!("panicking!")
+    ///     }
+    /// }
+    ///
+    /// // ... and its context.
+    /// struct WorkerContext;
+    /// impl RespawnableContext<'_> for WorkerContext {
+    ///     fn boxed_worker(&self) -> Result<Box<dyn Worker>, Error> {
+    ///         Ok(Box::new(PanickingWorker))
+    ///     }
+    /// }
+    ///
+    /// let mut runtime = Runtime::new();
+    /// runtime.launch_respawnable(WorkerContext);
+    ///
+    /// std::thread::sleep(Duration::from_secs(1));
+    /// runtime.health_check();
+    /// # runtime.stop();
+    /// ```
     #[inline]
     pub fn health_check(&mut self) {
         self.respawnable.iter_mut().for_each(|managed| {

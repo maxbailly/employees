@@ -8,7 +8,9 @@ use crate::{Context, Error, RespawnableContext};
 
 /* ---------- */
 
-/// A runtime to manage [`Worker`]s scoped threads.
+/// A runtime to manage [`Workers`] scoped threads.
+///
+/// [`Workers`]: crate::Worker
 pub struct ScopedRuntime<'scope, 'env, T: Type> {
     scope: &'scope Scope<'scope, 'env>,
 
