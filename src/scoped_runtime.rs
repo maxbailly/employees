@@ -44,7 +44,9 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env, Root> {
         crate::utils::enable_graceful_shutdown(&self.shutdown)
     }
 
-    /// Stops the runtime, asking for all running workers to stop their loops.
+    /// Forces workers to leave their main loop.
+    ///
+    /// This function doesn't wait for thread completion.
     #[inline]
     pub fn stop(&self) {
         self.shutdown.stop()
@@ -52,6 +54,14 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env, Root> {
 }
 
 impl<'scope, 'env> ScopedRuntime<'scope, 'env, Nested> {
+    /// Returns a new scoped runtime whose stopping condition is controlled by the "parent" runtime
+    /// from which `shutdown` is originates.
+    ///
+    /// This allows users to spawn runtimes in workers without caring about the shutdown.
+    /// Thus, the [`enable_graceful_shutdown`] and [`stop`] functions can't be called on a nested runtime.
+    ///
+    /// [`enable_graceful_shutdown`]: ScopedRuntime::enable_graceful_shutdown
+    /// [`stop`]: ScopedRuntime::stop
     pub fn nested(scope: &'scope Scope<'scope, 'env>, shutdown: Shutdown) -> Self {
         Self {
             scope,
@@ -65,12 +75,20 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env, Nested> {
 
 impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
     /// Runs an [`Worker`] in a new thread.
+    ///
+    /// Similar to the [`Runtime::launch`] function, see its documentation for more details.
+    ///
+    /// [`Runtime::launch`]: crate::Runtime::launch
     #[inline]
     pub fn launch<W: Worker + 'env>(&mut self, worker: W) -> Result<(), Error> {
         self.inner_spawn_thread(worker, Settings::default(), None::<Vec<_>>)
     }
 
-    /// Runs an [`Worker`] in a new configured thread.
+    /// Runs an [`Worker`] in a new thread.
+    ///
+    /// Similar to the [`Runtime::launch_with_settings`] function, see its documentation for more details.
+    ///
+    /// [`Runtime::launch_with_settings`]: crate::Runtime::launch_with_settings
     #[inline]
     pub fn launch_with_settings<W: Worker + 'env>(
         &mut self,
@@ -80,7 +98,11 @@ impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
         self.inner_spawn_thread(worker, settings, None::<Vec<_>>)
     }
 
-    /// Runs an [`Worker`] in a new thread where its thread is pinned to given cpu cores.
+    /// Runs an [`Worker`] in a new thread.
+    ///
+    /// Similar to the [`Runtime::launch_pinned`] function, see its documentation for more details.
+    ///
+    /// [`Runtime::launch_pinned`]: crate::Runtime::launch_pinned
     #[inline]
     pub fn launch_pinned<W, C>(&mut self, worker: W, cores: C) -> Result<(), Error>
     where
@@ -90,7 +112,11 @@ impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
         self.launch_pinned_with_settings(worker, cores, Settings::default())
     }
 
-    /// Runs an [`Worker`] in a new configured thread where its thread is pinned to given cpu cores.
+    /// Runs an [`Worker`] in a new thread.
+    ///
+    /// Similar to the [`Runtime::launch_pinned_with_settings`] function, see its documentation for more details.
+    ///
+    /// [`Runtime::launch_pinned_with_settings`]: crate::Runtime::launch_pinned_with_settings
     #[inline]
     pub fn launch_pinned_with_settings<W, C>(
         &mut self,
@@ -105,7 +131,11 @@ impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
         self.inner_spawn_thread(worker, settings, Some(cores))
     }
 
-    /// Runs an [`Worker`] built from a context in a new thread.
+    /// Runs a [`Worker`] built from a [`Context`] that can be respawned if it panics.
+    ///
+    /// Similar to the [`Runtime::launch_from_context`] function, see its documentation for more details.
+    ///
+    /// [`Runtime::launch_from_context`]: crate::Runtime::launch_from_context
     #[inline]
     pub fn launch_from_context<W, C>(&mut self, ctx: C) -> Result<(), Error>
     where
@@ -119,7 +149,11 @@ impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
         self.inner_spawn_thread(worker, settings, cores)
     }
 
-    /// Runs a [`Worker`] that can be respawned if it panics.
+    /// Runs a [`Worker`] built from a [`RespawnableContext`] that can be respawned if it panics.
+    ///
+    /// Similar to the [`Runtime::launch_respawnable`] function, see its documentation for more details.
+    ///
+    /// [`Runtime::launch_respawnable`]: crate::Runtime::launch_respawnable
     #[inline]
     pub fn launch_respawnable<R>(&mut self, ctx: R) -> Result<(), Error>
     where
@@ -131,7 +165,12 @@ impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
         Ok(())
     }
 
-    /// Checks all respawnable [`Worker`]s, respawning the ones that panicked.
+    /// Checks all respawnable [`Workers`], respawning the ones that panicked.
+    ///
+    /// Similar to the [`Runtime::health_check`] function, see its documentation for more details.
+    ///
+    /// [`Workers`]: crate::Worker
+    /// [`Runtime::health_check`]: crate::Runtime::launch_respawnable
     #[inline]
     pub fn health_check(&mut self) {
         self.managed.iter_mut().for_each(|managed| {

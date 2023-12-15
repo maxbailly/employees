@@ -1,24 +1,116 @@
-/// A trait that is implemented on type that act as some kind
-/// of server in a multi-threaded context.
+/// A type that implements this trait can open an communication channel between the type and some other type
+/// implements the [`Connect`] trait of the type.
+///
+/// # Examples
+///
+/// ```
+/// # use employees::*;
+/// # use std::sync::mpsc::{self, Receiver, Sender};
+/// #[derive(Default)]
+/// struct Producer {
+///     sender: Option<Sender<u8>>,
+/// }
+///
+/// impl Connect<Consumer> for Producer {
+///     fn on_connection(&mut self, endpoint: Sender<u8>) {
+///         self.sender = Some(endpoint)
+///     }
+/// }
+///
+/// struct Consumer {
+///     sender: Sender<u8>,
+///     recver: Receiver<u8>,
+/// }
+///
+/// impl Consumer {
+///     fn new() -> Self {
+///         let (sender, recver) = mpsc::channel();
+///
+///         Self {
+///             sender,
+///             recver,
+///         }
+///     }
+/// }
+///
+/// impl Register for Consumer {
+///     type Endpoint = Sender<u8>;
+///
+///     fn register(&mut self, other: &mut impl Connect<Self>) {
+///         other.on_connection(self.sender.clone())
+///     }
+/// }
+///
+/// let mut consumer = Consumer::new();
+/// let mut producer1 = Producer::default();
+/// let mut producer2 = Producer::default();
+///
+/// consumer.register(&mut producer1);
+/// consumer.register(&mut producer2);
+/// ```
 pub trait Register {
-    /// The type used to communitate with the [`Connect`].
+    /// The type used to communicate with some [`Connect`].
     type Endpoint;
 
-    /// Connects the [`Register`] to the `other` entity. The latter
-    /// must be a [`Connect`] of `self`.
+    /// Connects the [`Register`] to the `other` entity with must implement [`Connect`] of `self`.
     ///
-    /// This method should pass a `Endpoint` to the given entity.
+    /// This function should pass a `Endpoint` to `other` by calling the [`Connect::on_connection`] function.
     fn register(&mut self, other: &mut impl Connect<Self>);
 }
 
 /* ---------- */
 
-/// Connects two types in a server/client relationship.
+/// A type implementing this trait can be connected to some [`Register`].
 ///
-/// A type implementing this trait can be connected to some [`Register`]
-/// to send or receive messages using the `endpoint`.
+/// # Examples
+///
+/// ```
+/// # use employees::*;
+/// # use std::sync::mpsc::{self, Receiver, Sender};
+/// #[derive(Default)]
+/// struct Producer {
+///     sender: Option<Sender<u8>>,
+/// }
+///
+/// impl Connect<Consumer> for Producer {
+///     fn on_connection(&mut self, endpoint: Sender<u8>) {
+///         self.sender = Some(endpoint)
+///     }
+/// }
+///
+/// struct Consumer {
+///     sender: Sender<u8>,
+///     recver: Receiver<u8>,
+/// }
+///
+/// impl Consumer {
+///     fn new() -> Self {
+///         let (sender, recver) = mpsc::channel();
+///
+///         Self {
+///             sender,
+///             recver,
+///         }
+///     }
+/// }
+///
+/// impl Register for Consumer {
+///     type Endpoint = Sender<u8>;
+///
+///     fn register(&mut self, other: &mut impl Connect<Self>) {
+///         other.on_connection(self.sender.clone())
+///     }
+/// }
+///
+/// let mut consumer = Consumer::new();
+/// let mut producer1 = Producer::default();
+/// let mut producer2 = Producer::default();
+///
+/// consumer.register(&mut producer1);
+/// consumer.register(&mut producer2);
+/// ```
 pub trait Connect<S: Register + ?Sized> {
-    /// Sets the endpoint of the implementor.
+    /// Sets the endpoint of the communication channel between `self` and `S`.
     fn on_connection(&mut self, endpoint: S::Endpoint);
 }
 

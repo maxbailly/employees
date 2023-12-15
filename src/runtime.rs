@@ -10,7 +10,7 @@ use crate::Error;
 
 /// A runtime that manages [`Workers`] threads.
 ///
-/// If the runtime is dropped, all threads are automatically joined.
+/// When dropped, a runtime waits for all the threads to complete.
 ///
 /// [`Workers`]: crate::Worker
 #[derive(Default)]
@@ -38,7 +38,9 @@ impl Runtime<Root> {
         crate::utils::enable_graceful_shutdown(&self.shutdown)
     }
 
-    /// Stops the runtime, asking for all running workers to stop their loops.
+    /// Forces workers to leave their main loop.
+    ///
+    /// This function doesn't wait for thread completion.
     #[inline]
     pub fn stop(&self) {
         self.shutdown.stop()
@@ -46,6 +48,14 @@ impl Runtime<Root> {
 }
 
 impl Runtime<Nested> {
+    /// Returns a new runtime whose stopping condition is controlled by the "parent" runtime
+    /// from which `shutdown` is originates.
+    ///
+    /// This allows users to spawn runtimes in workers without caring about the shutdown.
+    /// Thus, the [`enable_graceful_shutdown`] and [`stop`] functions can't be called on a nested runtime.
+    ///
+    /// [`enable_graceful_shutdown`]: Runtime::enable_graceful_shutdown
+    /// [`stop`]: Runtime::stop
     #[inline]
     pub fn nested(shutdown: Shutdown) -> Self {
         Self::from(shutdown)
@@ -54,12 +64,43 @@ impl Runtime<Nested> {
 
 impl<T: Type> Runtime<T> {
     /// Runs a [`Worker`] in a new thread.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use employees::*;
+    /// struct Employee;
+    /// // -- skipping the Worker implementation for Employee...
+    /// # impl Worker for Employee {}
+    ///
+    /// let mut runtime = Runtime::new();
+    ///
+    /// // Run a Employee thread.
+    /// runtime.launch(Employee).unwrap();
+    /// ```
     #[inline]
     pub fn launch<W: Worker + 'static>(&mut self, worker: W) -> Result<(), Error> {
         self.inner_spawn_thread(worker, Settings::default(), None::<Vec<_>>)
     }
 
-    /// Runs a [`Worker`] in a new configured thread.
+    /// Runs a [`Worker`] in a new thread.
+    ///
+    /// The new thread will be configured with `settings`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use employees::*;
+    /// struct Employee;
+    /// // -- skipping the Worker implementation for Employee...
+    /// # impl Worker for Employee {}
+    ///
+    /// let mut runtime = Runtime::new();
+    /// let settings = Settings::new().name("alice");
+    ///
+    /// // Run a Employee thread named "alice".
+    /// runtime.launch_with_settings(Employee, settings).unwrap();
+    /// ```
     #[inline]
     pub fn launch_with_settings<W: Worker + 'static>(
         &mut self,
@@ -69,7 +110,23 @@ impl<T: Type> Runtime<T> {
         self.inner_spawn_thread(worker, settings, None::<Vec<_>>)
     }
 
-    /// Runs a [`Worker`] in a new thread where its thread is pinned to given cpu cores.
+    /// Runs a [`Worker`] in a new thread.
+    ///
+    /// The new thread will have its affinity set to the `cores`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use employees::*;
+    /// struct Employee;
+    /// // -- skipping the Worker implementation for Employee...
+    /// # impl Worker for Employee {}
+    ///
+    /// let mut runtime = Runtime::new();
+    ///
+    /// // Run a Employee thread bound to the CPU #1.
+    /// runtime.launch_pinned(Employee, [1]).unwrap();
+    /// ```
     #[inline]
     pub fn launch_pinned<W, C>(&mut self, worker: W, cores: C) -> Result<(), Error>
     where
@@ -79,7 +136,24 @@ impl<T: Type> Runtime<T> {
         self.inner_spawn_thread(worker, Settings::default(), Some(cores))
     }
 
-    /// Runs a [`Worker`] in a new configured thread where its thread is pinned to given cpu cores.
+    /// Runs a [`Worker`] in a new thread.
+    ///
+    /// The new thread will be configured with `settings` and its affinity set to the `cores`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use employees::*;
+    /// struct Employee;
+    /// // -- skipping the Worker implementation for Employee...
+    /// # impl Worker for Employee {}
+    ///
+    /// let mut runtime = Runtime::new();
+    /// let settings = Settings::new().name("alice");
+    ///
+    /// // Run a Employee thread named "alice" bound to the CPU #1.
+    /// runtime.launch_pinned_with_settings(Employee, [1], settings).unwrap();
+    /// ```
     #[inline]
     pub fn launch_pinned_with_settings<W, C>(
         &mut self,
@@ -94,7 +168,41 @@ impl<T: Type> Runtime<T> {
         self.inner_spawn_thread(worker, settings, Some(cores))
     }
 
-    /// Runs a [`Worker`] built from a context in a new thread.
+    /// Runs a [`Worker`] built from a [`Context`] in a new thread.
+    ///
+    /// The new thread will be configured using the values returned by the [`Context::settings`] function
+    /// and its affinity set using the [`Context::core_pinning`] function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use employees::*;
+    /// struct Employee;
+    /// // -- skipping the Worker implementation for Employee...
+    /// # impl Worker for Employee {}
+    ///
+    /// struct EmployeeContext;
+    /// impl Context for EmployeeContext {
+    ///     // -- skipping the building of Employee...
+    /// #   type Target = Employee;
+    /// #   fn into_worker(self) -> Result<Self::Target, Error> {
+    /// #       Ok(Employee)
+    /// #   }
+    ///
+    ///     fn settings(&self) -> Settings {
+    ///         // Setting the thread name.
+    ///         Settings::default().name("employee")
+    ///     }
+    ///
+    ///     fn core_pinning(&self) -> Option<Vec<usize>> {
+    ///         // Setting the thread affinity on the CPU #1.
+    ///         Some(vec![1])
+    ///     }
+    /// }
+    ///
+    /// let mut runtime = Runtime::new();
+    /// runtime.launch_from_context(EmployeeContext).unwrap();
+    /// ```
     #[inline]
     pub fn launch_from_context<W, C>(&mut self, ctx: C) -> Result<(), Error>
     where
@@ -108,7 +216,9 @@ impl<T: Type> Runtime<T> {
         self.inner_spawn_thread(worker, settings, cores)
     }
 
-    /// Runs a [`Worker`] that can be respawned if it panics.
+    /// Runs a [`Worker`] built from a [`RespawnableContext`] that can be respawned if it panics.
+    ///
+    /// Similar to [`Runtime::launch_from_context`], see its documentation for more details.
     #[inline]
     pub fn launch_respawnable<C>(&mut self, ctx: C) -> Result<(), Error>
     where
