@@ -291,7 +291,7 @@
 //! This crate re-exports all types from the [`minuteurs`] crate and implements the [`Worker`] and [`Register`] traits on
 //! the [`Timer`] type, allowing it to be used in runtimes.
 //!
-//! Requires with the `timers` feature.
+//! Requires the `timers` feature.
 //!
 //! [`minuteurs`]: <https://docs.rs/minuteurs/latest/minuteurs/>
 //! [`Timer`]: minuteurs::Timer
