@@ -16,7 +16,7 @@ pub struct ScopedRuntime<'scope, 'env, T: Type> {
 
     shutdown: Shutdown,
     threads: Vec<ScopedJoinHandle<'scope, ()>>,
-    managed: Vec<RespawnableScopedHandle<'scope, 'env>>,
+    respawnables: Vec<RespawnableScopedHandle<'scope, 'env>>,
 
     _type: PhantomData<T>,
 }
@@ -28,7 +28,7 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env, Root> {
         Self {
             scope,
             threads: Vec::new(),
-            managed: Vec::new(),
+            respawnables: Vec::new(),
             shutdown: Shutdown::new(),
             _type: PhantomData,
         }
@@ -42,14 +42,6 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env, Root> {
     pub fn enable_graceful_shutdown(&self) {
         crate::utils::enable_graceful_shutdown(&self.shutdown)
     }
-
-    /// Forces workers to leave their main loop.
-    ///
-    /// This function doesn't wait for thread completion.
-    #[inline]
-    pub fn stop(&self) {
-        self.shutdown.stop()
-    }
 }
 
 impl<'scope, 'env> ScopedRuntime<'scope, 'env, Nested> {
@@ -57,16 +49,12 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env, Nested> {
     /// from which `shutdown` is originates.
     ///
     /// This allows users to spawn runtimes in workers without caring about the shutdown.
-    /// Thus, the [`enable_graceful_shutdown`] and [`stop`] functions can't be called on a nested runtime.
-    ///
-    /// [`enable_graceful_shutdown`]: ScopedRuntime::enable_graceful_shutdown
-    /// [`stop`]: ScopedRuntime::stop
     pub fn nested(scope: &'scope Scope<'scope, 'env>, shutdown: Shutdown) -> Self {
         Self {
             scope,
             shutdown,
             threads: Vec::new(),
-            managed: Vec::new(),
+            respawnables: Vec::new(),
             _type: PhantomData,
         }
     }
@@ -160,8 +148,27 @@ impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
     {
         let managed = RespawnableScopedHandle::spawn_managed(self.scope, ctx, &self.shutdown)?;
 
-        self.managed.push(managed);
+        self.respawnables.push(managed);
         Ok(())
+    }
+
+    /// Blocks the calling thread until all the runtime's workers stop.
+    ///
+    /// Similar to the [`Runtime::wait`] function, see its documentation for more details.
+    ///
+    /// [`Workers`]: crate::Worker
+    /// [`Runtime::wait`]: crate::Runtime::wait
+    #[inline]
+    pub fn wait(&mut self) {
+        // We need to manage respawnable workers until there's none left.
+        while !self.respawnables.is_empty() {
+            self.health_check()
+        }
+
+        // Then we join the other workers
+        for thread in self.threads.drain(..) {
+            let _ = thread.join();
+        }
     }
 
     /// Checks all respawnable [`Workers`], respawning the ones that panicked.
@@ -169,13 +176,20 @@ impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
     /// Similar to the [`Runtime::health_check`] function, see its documentation for more details.
     ///
     /// [`Workers`]: crate::Worker
-    /// [`Runtime::health_check`]: crate::Runtime::launch_respawnable
+    /// [`Runtime::health_check`]: crate::Runtime::health_check
     #[inline]
     pub fn health_check(&mut self) {
-        self.managed.iter_mut().for_each(|managed| {
+        self.respawnables.iter_mut().for_each(|managed| {
             // TODO: Do something with the errors
             let _ = managed.respawn_if_panicked(&self.shutdown);
-        })
+        });
+
+        // Filter the handles that actually finished without panicking.
+        self.respawnables = self
+            .respawnables
+            .drain(..)
+            .filter(|handle| !handle.is_finished())
+            .collect::<Vec<_>>();
     }
 
     #[inline]
@@ -199,13 +213,11 @@ impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
 
 impl<T: Type> Drop for ScopedRuntime<'_, '_, T> {
     fn drop(&mut self) {
-        for thread in self.threads.drain(..) {
-            let _ = thread.join();
+        if T::IS_ROOT {
+            self.shutdown.stop()
         }
 
-        for thread in self.managed.drain(..) {
-            thread.join();
-        }
+        self.wait()
     }
 }
 
@@ -245,13 +257,6 @@ impl<'scope, 'env> RespawnableScopedHandle<'scope, 'env> {
             .unwrap_or(true)
     }
 
-    #[inline]
-    fn join(mut self) {
-        if let Some(handle) = self.handle.take() {
-            let _ = handle.join();
-        }
-    }
-
     fn respawn_if_panicked(&mut self, shutdown: &Shutdown) -> Result<(), Error> {
         if !self.is_finished() || self.handle.is_none() {
             return Ok(());
@@ -287,14 +292,6 @@ mod tests {
     use crate::test_utils::*;
 
     #[test]
-    fn new_runtime() {
-        std::thread::scope(|scope| {
-            let rt = ScopedRuntime::new(scope);
-            rt.stop()
-        })
-    }
-
-    #[test]
     fn start_stop() {
         std::thread::scope(|scope| {
             let mut rt = ScopedRuntime::new(scope);
@@ -302,12 +299,11 @@ mod tests {
             rt.launch(TestWorker)
                 .expect("failed to launch the test actor");
             std::thread::sleep(Duration::from_millis(500));
-            rt.stop();
         })
     }
 
     #[test]
-    fn drop() {
+    fn wait() {
         std::thread::scope(|scope| {
             let mut rt = ScopedRuntime::new(scope);
             let now = Instant::now();
@@ -316,7 +312,7 @@ mod tests {
             rt.launch(TestTimedWorker::new(timeout))
                 .expect("failed to launch the test actor");
 
-            std::mem::drop(rt);
+            rt.wait();
             assert!(now.elapsed() > timeout);
         })
     }
@@ -330,7 +326,6 @@ mod tests {
             rt.launch_pinned(TestPinnedWorker::new(core_id), [core_id])
                 .expect("failed to launch the test actor");
             std::thread::sleep(Duration::from_millis(1));
-            rt.stop();
         })
     }
 }

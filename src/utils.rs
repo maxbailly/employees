@@ -132,18 +132,27 @@ impl Clone for Shutdown {
 /// [`Nested`] runtimes, on the other hand, can't do this as their stop condition is inherited by the "parent" runtime.
 ///
 /// [`Runtimes`]: crate::Runtime
-pub trait Type {}
+pub trait Type {
+    /// Is the [`Runtime`] root or nested?
+    ///
+    /// [`Runtime`]: crate::Runtime
+    const IS_ROOT: bool;
+}
 
 /// Marker type for a default runtime.
 ///
 /// See the [`Type`] documentation for more informations.
 #[derive(Debug)]
 pub enum Root {}
-impl Type for Root {}
+impl Type for Root {
+    const IS_ROOT: bool = true;
+}
 
 /// Marker type for a runtime spawned in and controlled by another runtime.
 ///
 /// See the [`Type`] documentation for more informations.
 #[derive(Debug)]
 pub enum Nested {}
-impl Type for Nested {}
+impl Type for Nested {
+    const IS_ROOT: bool = false;
+}

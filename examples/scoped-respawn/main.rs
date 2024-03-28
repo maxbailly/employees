@@ -63,8 +63,6 @@ fn main() -> AnyResult<()> {
             runtime.health_check();
         }
 
-        runtime.stop();
-
         Ok(())
     })
 }

@@ -34,7 +34,6 @@ let mut runtime = Runtime::new();
 
 runtime.launch(WorkerThatPrints);
 std::thread::sleep(Duration::from_secs(1));
-runtime.stop();
 ```
 
 See [the full documentation](https://docs.rs/employees/latest/employees/) for more in depth details.

@@ -39,4 +39,6 @@ fn main() {
     rt.launch(HttpServer)
         .expect("failed to spawn the http server");
     rt.launch(timer).expect("failed to spawn the timer");
+
+    rt.wait()
 }

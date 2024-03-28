@@ -51,6 +51,4 @@ fn main() {
         println!("[MAIN] running health check");
         runtime.health_check();
     }
-
-    runtime.stop()
 }

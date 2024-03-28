@@ -21,4 +21,6 @@ fn main() {
     runtime
         .launch_from_context(consumers)
         .expect("failed to launch the consumers");
+
+    runtime.wait()
 }

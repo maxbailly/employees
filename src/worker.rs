@@ -40,7 +40,6 @@ use crate::Error;
 ///
 /// runtime.launch(WorkerThatPrints);
 /// std::thread::sleep(Duration::from_secs(1));
-/// runtime.stop();
 /// ```
 ///
 /// A worker that counts the number of time its update method has beed called and print that amount once dropped:
@@ -73,7 +72,6 @@ use crate::Error;
 /// let mut runtime = Runtime::new();
 /// runtime.launch(Counter::default());
 /// # std::thread::sleep(Duration::from_secs(1));
-/// # runtime.stop();
 /// ```
 pub trait Worker: Send {
     /// Convenient method to print or set stuff up before entering the worker infinite loop.
@@ -254,7 +252,7 @@ pub trait Context {
 ///
 /// std::thread::sleep(Duration::from_secs(1));
 /// runtime.health_check();
-/// # runtime.stop();
+/// # std::thread::sleep(Duration::from_millis(500));;
 /// ```
 pub trait RespawnableContext<'a> {
     /// Similar to [`Context::into_worker`] but this function doesn't consume `self`

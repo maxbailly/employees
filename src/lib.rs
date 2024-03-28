@@ -34,7 +34,6 @@
 //!
 //! runtime.launch(WorkerThatPrints);
 //! std::thread::sleep(Duration::from_secs(1));
-//! runtime.stop();
 //! ```
 //!
 //! # Features
@@ -192,7 +191,8 @@
 //!
 //! std::thread::sleep(Duration::from_secs(1));
 //! runtime.health_check();
-//! # runtime.stop();
+//! # std::thread::sleep(Duration::from_millis(500));
+//! # runtime.wait();
 //! ```
 //!
 //! ## Inter-workers communication
@@ -283,7 +283,6 @@
 //! runtime.launch(prod3);
 //!
 //! # std::thread::sleep(Duration::from_secs(1));
-//! # runtime.stop();
 //! ```
 //!
 //! ## Timers
@@ -295,6 +294,8 @@
 //!
 //! [`minuteurs`]: <https://docs.rs/minuteurs/latest/minuteurs/>
 //! [`Timer`]: minuteurs::Timer
+
+#![warn(missing_docs)]
 
 mod error;
 mod runtime;
