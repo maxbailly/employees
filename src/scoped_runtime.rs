@@ -14,10 +14,9 @@ use crate::{Context, Error, RespawnableContext};
 pub struct ScopedRuntime<'scope, 'env, T: Type> {
     scope: &'scope Scope<'scope, 'env>,
 
+    shutdown: Shutdown,
     threads: Vec<ScopedJoinHandle<'scope, ()>>,
     managed: Vec<RespawnableScopedHandle<'scope, 'env>>,
-
-    shutdown: Shutdown,
 
     _type: PhantomData<T>,
 }
@@ -65,9 +64,9 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env, Nested> {
     pub fn nested(scope: &'scope Scope<'scope, 'env>, shutdown: Shutdown) -> Self {
         Self {
             scope,
+            shutdown,
             threads: Vec::new(),
             managed: Vec::new(),
-            shutdown,
             _type: PhantomData,
         }
     }
@@ -280,25 +279,17 @@ impl<'scope, 'env> RespawnableScopedHandle<'scope, 'env> {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
 
     use rand::Rng;
 
     use super::*;
-    use crate::worker::{ControlFlow, Worker};
-
-    struct TestActor;
-    impl Worker for TestActor {
-        fn on_update(&mut self) -> ControlFlow {
-            ControlFlow::Continue
-        }
-    }
+    use crate::test_utils::*;
 
     #[test]
     fn new_runtime() {
         std::thread::scope(|scope| {
             let rt = ScopedRuntime::new(scope);
-
             rt.stop()
         })
     }
@@ -308,7 +299,7 @@ mod tests {
         std::thread::scope(|scope| {
             let mut rt = ScopedRuntime::new(scope);
 
-            rt.launch(TestActor)
+            rt.launch(TestWorker)
                 .expect("failed to launch the test actor");
             std::thread::sleep(Duration::from_millis(500));
             rt.stop();
@@ -316,20 +307,27 @@ mod tests {
     }
 
     #[test]
-    fn pinned_actor() {
-        struct TestPinnedActor(usize);
-        impl Worker for TestPinnedActor {
-            fn on_update(&mut self) -> ControlFlow {
-                assert_eq!(self.0, affinity::get_thread_affinity().unwrap()[0]);
-                ControlFlow::Break
-            }
-        }
+    fn drop() {
+        std::thread::scope(|scope| {
+            let mut rt = ScopedRuntime::new(scope);
+            let now = Instant::now();
+            let timeout = Duration::from_millis(500);
 
+            rt.launch(TestTimedWorker::new(timeout))
+                .expect("failed to launch the test actor");
+
+            std::mem::drop(rt);
+            assert!(now.elapsed() > timeout);
+        })
+    }
+
+    #[test]
+    fn pinned_actor() {
         std::thread::scope(|scope| {
             let mut rt = ScopedRuntime::new(scope);
             let core_id = rand::thread_rng().gen_range(0..5);
 
-            rt.launch_pinned(TestPinnedActor(core_id), [core_id])
+            rt.launch_pinned(TestPinnedWorker::new(core_id), [core_id])
                 .expect("failed to launch the test actor");
             std::thread::sleep(Duration::from_millis(1));
             rt.stop();

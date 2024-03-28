@@ -301,6 +301,8 @@ mod runtime;
 mod scoped_runtime;
 mod service;
 mod settings;
+#[cfg(test)]
+mod test_utils;
 #[cfg(feature = "timing")]
 pub mod timers;
 mod utils;

@@ -387,3 +387,55 @@ impl RespawnableHandle {
         Ok(())
     }
 }
+
+/* ---------- */
+
+#[cfg(test)]
+mod tests {
+    use std::time::{Duration, Instant};
+
+    use rand::Rng;
+
+    use super::*;
+    use crate::test_utils::*;
+
+    #[test]
+    fn new_runtime() {
+        let rt = Runtime::new();
+        rt.stop()
+    }
+
+    #[test]
+    fn start_stop() {
+        let mut rt = Runtime::new();
+
+        rt.launch(TestWorker)
+            .expect("failed to launch the test actor");
+        std::thread::sleep(Duration::from_millis(500));
+        rt.stop();
+    }
+
+    #[test]
+    fn drop() {
+        let mut rt = Runtime::new();
+        let now = Instant::now();
+        let timeout = Duration::from_millis(500);
+
+        rt.launch(TestTimedWorker::new(timeout))
+            .expect("failed to launch the test actor");
+
+        std::mem::drop(rt);
+        assert!(now.elapsed() > timeout);
+    }
+
+    #[test]
+    fn pinned_actor() {
+        let mut rt = Runtime::new();
+        let core_id = rand::thread_rng().gen_range(0..5);
+
+        rt.launch_pinned(TestPinnedWorker::new(core_id), [core_id])
+            .expect("failed to launch the test actor");
+        std::thread::sleep(Duration::from_millis(1));
+        rt.stop();
+    }
+}
