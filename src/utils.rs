@@ -125,14 +125,19 @@ impl Clone for Shutdown {
 
 /* ---------- */
 
+// To prevent users from implementing the Type trait.
+mod private {
+    pub trait Sealed {}
+}
+
 /// The type of a runtime.
 ///
 /// [`Runtimes`] can have two different state that defines their ability to stop the execution of their workers.
-/// Particularely, a [`Root`] runtime can stop its execution itself by calling the `stop()` or the `enable_graceful_shutdown()` functions.
+/// Particularely, a [`Root`] runtime can stop its execution itself by calling the `enable_graceful_shutdown()` functions.
 /// [`Nested`] runtimes, on the other hand, can't do this as their stop condition is inherited by the "parent" runtime.
 ///
 /// [`Runtimes`]: crate::Runtime
-pub trait Type {
+pub trait Type: private::Sealed {
     /// Is the [`Runtime`] root or nested?
     ///
     /// [`Runtime`]: crate::Runtime
@@ -144,15 +149,21 @@ pub trait Type {
 /// See the [`Type`] documentation for more informations.
 #[derive(Debug)]
 pub enum Root {}
+
 impl Type for Root {
     const IS_ROOT: bool = true;
 }
+
+impl private::Sealed for Root {}
 
 /// Marker type for a runtime spawned in and controlled by another runtime.
 ///
 /// See the [`Type`] documentation for more informations.
 #[derive(Debug)]
 pub enum Nested {}
+
 impl Type for Nested {
     const IS_ROOT: bool = false;
 }
+
+impl private::Sealed for Nested {}
