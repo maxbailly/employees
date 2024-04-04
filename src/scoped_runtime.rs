@@ -1,5 +1,6 @@
 use std::marker::PhantomData;
 use std::thread::{Scope, ScopedJoinHandle};
+use std::time::Duration;
 
 use crate::settings::Settings;
 use crate::utils::{Nested, Root, Shutdown, Type};
@@ -162,7 +163,8 @@ impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
     pub fn wait(&mut self) {
         // We need to manage respawnable workers until there's none left.
         while !self.respawnables.is_empty() {
-            self.health_check()
+            self.health_check();
+            std::thread::sleep(Duration::from_micros(1));
         }
 
         // Then we join the other workers

@@ -192,7 +192,6 @@
 //! std::thread::sleep(Duration::from_secs(1));
 //! runtime.health_check();
 //! # std::thread::sleep(Duration::from_millis(500));
-//! # runtime.wait();
 //! ```
 //!
 //! ## Inter-workers communication

@@ -19,7 +19,7 @@ use crate::{Error, Worker};
 #[inline]
 pub(crate) fn enable_graceful_shutdown(shutdown: &Shutdown) {
     for sig in TERM_SIGNALS {
-        // TODO: Print du log, retourner une erreur ou juste ne rien faire ?
+        // TODO: Do we want to print some logs or return an error here?
         let _ = flag::register_conditional_shutdown(*sig, 1, shutdown.as_ref().clone());
         let _ = flag::register(*sig, shutdown.as_ref().clone());
     }
