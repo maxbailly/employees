@@ -111,14 +111,12 @@ pub trait Worker: Send {
 }
 
 impl<T: Worker + ?Sized> Worker for Box<T> {
-    #[inline]
     fn on_start(&mut self) {
-        self.deref_mut().on_start()
+        unreachable!("a boxed worker should never call the Worker::on_start() method")
     }
 
-    #[inline]
     fn on_update(&mut self) -> ControlFlow {
-        self.deref_mut().on_update()
+        unreachable!("a boxed worker should never call the Worker::on_update() method")
     }
 
     #[inline]
@@ -314,4 +312,26 @@ pub enum ControlFlow {
     Continue,
     /// Tells the runtime to break the main worker loop.
     Break,
+}
+
+/* ---------- */
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn boxed_worker() {
+        struct TestWorker;
+        impl Worker for TestWorker {
+            fn on_start(&mut self) {}
+
+            fn on_update(&mut self) -> ControlFlow {
+                ControlFlow::Break
+            }
+        }
+
+        let mut boxed_worker = Box::new(TestWorker);
+        boxed_worker.run(Shutdown::new());
+    }
 }
