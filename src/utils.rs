@@ -95,8 +95,11 @@ impl Shutdown {
         Self::default()
     }
 
+    /// Stops the [`Runtime`].
+    ///
+    /// [`Runtime`]: crate::Runtime
     #[inline]
-    pub(crate) fn stop(&self) {
+    pub fn stop(&self) {
         self.0.store(true, Ordering::SeqCst)
     }
 
