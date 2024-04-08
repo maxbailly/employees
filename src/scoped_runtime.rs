@@ -132,7 +132,7 @@ impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
     {
         let settings = ctx.settings();
         let cores = ctx.core_pinning();
-        let worker = ctx.into_worker()?;
+        let worker = ctx.into_worker().inspect_err(|_| self.shutdown.stop())?;
 
         self.inner_spawn_thread(worker, settings, cores)
     }
@@ -147,7 +147,8 @@ impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
     where
         R: RespawnableContext<'env> + 'env,
     {
-        let managed = RespawnableScopedHandle::spawn_managed(self.scope, ctx, &self.shutdown)?;
+        let managed = RespawnableScopedHandle::spawn_managed(self.scope, ctx, &self.shutdown)
+            .inspect_err(|_| self.shutdown.stop())?;
 
         self.respawnables.push(managed);
         Ok(())
@@ -206,7 +207,8 @@ impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
         C: AsRef<[usize]> + Send + 'env,
     {
         let thread =
-            crate::utils::spawn_scoped_thread(self.scope, worker, settings, cores, &self.shutdown)?;
+            crate::utils::spawn_scoped_thread(self.scope, worker, settings, cores, &self.shutdown)
+                .inspect_err(|_| self.shutdown.stop())?;
 
         self.threads.push(thread);
         Ok(())
@@ -328,6 +330,19 @@ mod tests {
             rt.launch_pinned(TestPinnedWorker::new(core_id), [core_id])
                 .expect("failed to launch the test actor");
             std::thread::sleep(Duration::from_millis(1));
+        })
+    }
+
+    #[test]
+    fn stop_on_err() {
+        std::thread::scope(|scope| {
+            let mut rt = ScopedRuntime::new(scope);
+            let now = Instant::now();
+
+            rt.launch_from_context(BadWorkerContext)
+                .expect_err("launching this worker should fail");
+            rt.wait();
+            assert!(now.elapsed() < Duration::from_millis(500));
         })
     }
 }

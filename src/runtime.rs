@@ -54,6 +54,10 @@ impl Runtime<Nested> {
 impl<T: Type> Runtime<T> {
     /// Runs a [`Worker`] in a new thread.
     ///
+    /// # Errors
+    ///
+    /// On error, the corresponding error is returned and the runtime is stopped.
+    ///
     /// # Examples
     ///
     /// ```
@@ -75,6 +79,10 @@ impl<T: Type> Runtime<T> {
     /// Runs a [`Worker`] in a new thread.
     ///
     /// The new thread will be configured with `settings`.
+    ///
+    /// # Errors
+    ///
+    /// On error, the corresponding error is returned and the runtime is stopped.
     ///
     /// # Examples
     ///
@@ -103,6 +111,10 @@ impl<T: Type> Runtime<T> {
     ///
     /// The new thread will have its affinity set to the `cores`.
     ///
+    /// # Errors
+    ///
+    /// On error, the corresponding error is returned and the runtime is stopped.
+    ///
     /// # Examples
     ///
     /// ```
@@ -128,6 +140,10 @@ impl<T: Type> Runtime<T> {
     /// Runs a [`Worker`] in a new thread.
     ///
     /// The new thread will be configured with `settings` and its affinity set to the `cores`.
+    ///
+    /// # Errors
+    ///
+    /// On error, the corresponding error is returned and the runtime is stopped.
     ///
     /// # Examples
     ///
@@ -161,6 +177,10 @@ impl<T: Type> Runtime<T> {
     ///
     /// The new thread will be configured using the values returned by the [`Context::settings`] function
     /// and its affinity set using the [`Context::core_pinning`] function.
+    ///
+    /// # Errors
+    ///
+    /// On error, the corresponding error is returned and the runtime is stopped.
     ///
     /// # Examples
     ///
@@ -200,7 +220,7 @@ impl<T: Type> Runtime<T> {
     {
         let settings = ctx.settings();
         let cores = ctx.core_pinning();
-        let worker = ctx.into_worker()?;
+        let worker = ctx.into_worker().inspect_err(|_| self.shutdown.stop())?;
 
         self.inner_spawn_thread(worker, settings, cores)
     }
@@ -213,7 +233,8 @@ impl<T: Type> Runtime<T> {
     where
         C: RespawnableContext<'static> + 'static,
     {
-        let managed = RespawnableHandle::spawn_managed(ctx, &self.shutdown)?;
+        let managed = RespawnableHandle::spawn_managed(ctx, &self.shutdown)
+            .inspect_err(|_| self.shutdown.stop())?;
 
         self.respawnables.push(managed);
         Ok(())
@@ -323,7 +344,8 @@ impl<T: Type> Runtime<T> {
         W: Worker + 'static,
         C: AsRef<[usize]> + Send + 'static,
     {
-        let thread = crate::utils::spawn_thread(worker, settings, cores, &self.shutdown)?;
+        let thread = crate::utils::spawn_thread(worker, settings, cores, &self.shutdown)
+            .inspect_err(|_| self.shutdown.stop())?;
 
         self.threads.push(thread);
         Ok(())
@@ -459,5 +481,16 @@ mod tests {
         rt.launch_pinned(TestPinnedWorker::new(core_id), [core_id])
             .expect("failed to launch the test actor");
         std::thread::sleep(Duration::from_millis(1));
+    }
+
+    #[test]
+    fn stop_on_err() {
+        let mut rt = Runtime::new();
+        let now = Instant::now();
+
+        rt.launch_from_context(BadWorkerContext)
+            .expect_err("launching this worker should fail");
+        rt.wait();
+        assert!(now.elapsed() < Duration::from_millis(500));
     }
 }

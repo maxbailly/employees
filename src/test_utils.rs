@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use crate::{ControlFlow, Worker};
+use crate::{Context, ControlFlow, Error, Worker};
 
 /* ---------- */
 
@@ -57,5 +57,26 @@ impl Worker for TestPinnedWorker {
     fn on_update(&mut self) -> ControlFlow {
         assert_eq!(self.0, affinity::get_thread_affinity().unwrap()[0]);
         ControlFlow::Break
+    }
+}
+
+/* ---------- */
+
+pub(crate) struct BadWorker;
+
+impl Worker for BadWorker {
+    fn on_update(&mut self) -> ControlFlow {
+        std::thread::sleep(Duration::from_millis(500));
+        ControlFlow::Break
+    }
+}
+
+pub(crate) struct BadWorkerContext;
+
+impl Context for BadWorkerContext {
+    type Target = BadWorker;
+
+    fn into_worker(self) -> Result<Self::Target, Error> {
+        Err(Error::context("bad context"))
     }
 }
