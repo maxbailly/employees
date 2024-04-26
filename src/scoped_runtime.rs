@@ -1,9 +1,8 @@
-use std::marker::PhantomData;
 use std::thread::{Scope, ScopedJoinHandle};
 use std::time::Duration;
 
 use crate::settings::Settings;
-use crate::utils::{Nested, Root, Shutdown, Type};
+use crate::utils::Shutdown;
 use crate::worker::Worker;
 use crate::{Context, Error, RespawnableContext};
 
@@ -12,17 +11,17 @@ use crate::{Context, Error, RespawnableContext};
 /// A runtime to manage [`Workers`] scoped threads.
 ///
 /// [`Workers`]: crate::Worker
-pub struct ScopedRuntime<'scope, 'env, T: Type> {
+pub struct ScopedRuntime<'scope, 'env> {
     scope: &'scope Scope<'scope, 'env>,
 
     shutdown: Shutdown,
     threads: Vec<ScopedJoinHandle<'scope, ()>>,
     respawnables: Vec<RespawnableScopedHandle<'scope, 'env>>,
 
-    _type: PhantomData<T>,
+    nested: bool,
 }
 
-impl<'scope, 'env> ScopedRuntime<'scope, 'env, Root> {
+impl<'scope, 'env> ScopedRuntime<'scope, 'env> {
     /// Returns a new runtime bound to the `scope`.
     #[inline]
     pub fn new(scope: &'scope Scope<'scope, 'env>) -> Self {
@@ -31,7 +30,7 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env, Root> {
             threads: Vec::new(),
             respawnables: Vec::new(),
             shutdown: Shutdown::new(),
-            _type: PhantomData,
+            nested: false,
         }
     }
 
@@ -43,9 +42,7 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env, Root> {
     pub fn enable_graceful_shutdown(&self) {
         crate::utils::enable_graceful_shutdown(&self.shutdown)
     }
-}
 
-impl<'scope, 'env> ScopedRuntime<'scope, 'env, Nested> {
     /// Returns a new scoped runtime whose stopping condition is controlled by the "parent" runtime
     /// from which `shutdown` is originates.
     ///
@@ -56,12 +53,10 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env, Nested> {
             shutdown,
             threads: Vec::new(),
             respawnables: Vec::new(),
-            _type: PhantomData,
+            nested: true,
         }
     }
-}
 
-impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
     /// Runs an [`Worker`] in a new thread.
     ///
     /// Similar to the [`Runtime::launch`] function, see its documentation for more details.
@@ -215,9 +210,9 @@ impl<'scope, 'env, T: Type> ScopedRuntime<'scope, 'env, T> {
     }
 }
 
-impl<T: Type> Drop for ScopedRuntime<'_, '_, T> {
+impl Drop for ScopedRuntime<'_, '_> {
     fn drop(&mut self) {
-        if T::IS_ROOT {
+        if !self.nested {
             self.shutdown.stop()
         }
 

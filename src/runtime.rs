@@ -1,9 +1,8 @@
-use std::marker::PhantomData;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
 use crate::settings::Settings;
-use crate::utils::{Nested, Root, Shutdown, Type};
+use crate::utils::Shutdown;
 use crate::worker::{Context, RespawnableContext, Worker};
 use crate::Error;
 
@@ -14,16 +13,14 @@ use crate::Error;
 /// When dropped, a runtime stops and waits for all the workers to complete.
 ///
 /// [`Workers`]: crate::Worker
-#[derive(Default)]
-pub struct Runtime<T: Type> {
+pub struct Runtime {
     shutdown: Shutdown,
     threads: Vec<JoinHandle<()>>,
     respawnables: Vec<RespawnableHandle>,
-
-    _type: PhantomData<T>,
+    nested: bool,
 }
 
-impl Runtime<Root> {
+impl Runtime {
     /// Returns a new runtime.
     #[inline]
     pub fn new() -> Self {
@@ -38,9 +35,7 @@ impl Runtime<Root> {
     pub fn enable_graceful_shutdown(&self) {
         crate::utils::enable_graceful_shutdown(&self.shutdown)
     }
-}
 
-impl Runtime<Nested> {
     /// Returns a new runtime whose stopping condition is controlled by the "parent" runtime
     /// from which `shutdown` is originates.
     ///
@@ -49,9 +44,7 @@ impl Runtime<Nested> {
     pub fn nested(shutdown: Shutdown) -> Self {
         Self::from(shutdown)
     }
-}
 
-impl<T: Type> Runtime<T> {
     /// Runs a [`Worker`] in a new thread.
     ///
     /// # Errors
@@ -352,33 +345,33 @@ impl<T: Type> Runtime<T> {
     }
 }
 
-impl Default for Runtime<Root> {
+impl Default for Runtime {
     #[inline]
     fn default() -> Self {
         Self {
             shutdown: Shutdown::new(),
             threads: Vec::new(),
             respawnables: Vec::new(),
-            _type: PhantomData,
+            nested: false,
         }
     }
 }
 
-impl From<Shutdown> for Runtime<Nested> {
+impl From<Shutdown> for Runtime {
     #[inline]
     fn from(shutdown: Shutdown) -> Self {
         Self {
             shutdown,
             threads: Vec::new(),
             respawnables: Vec::new(),
-            _type: PhantomData,
+            nested: true,
         }
     }
 }
 
-impl<T: Type> Drop for Runtime<T> {
+impl Drop for Runtime {
     fn drop(&mut self) {
-        if T::IS_ROOT {
+        if !self.nested {
             self.shutdown.stop()
         }
 
