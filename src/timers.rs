@@ -2,8 +2,7 @@
 //!
 //! [`minuteurs`]: <https://docs.rs/minuteurs/latest/minuteurs/>
 
-pub use minuteurs::*;
-
+use crate::minuteurs::{Timer, Watcher};
 use crate::{Connect, ControlFlow, Register, Worker};
 
 /* ---------- */

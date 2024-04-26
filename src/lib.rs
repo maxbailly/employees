@@ -289,10 +289,71 @@
 //! This crate re-exports all types from the [`minuteurs`] crate and implements the [`Worker`] and [`Register`] traits on
 //! the [`Timer`] type, allowing it to be used in runtimes.
 //!
-//! Requires the `timers` feature.
+//! Requires the `timing` feature.
 //!
 //! [`minuteurs`]: <https://docs.rs/minuteurs/latest/minuteurs/>
-//! [`Timer`]: minuteurs::Timer
+//! [`Timer`]: <https://docs.rs/minuteurs/latest/minuteurs/struct.Timer.html>
+//!
+#![cfg_attr(feature = "timing", doc = "```")]
+#![cfg_attr(not(feature = "timing"), doc = "```ignore")]
+//! # use std::time::Duration;
+//! use employees::{Runtime, Worker, ControlFlow, Error, Register, Connect, Context};
+//! use employees::minuteurs::{Timer, Watcher};
+//!
+//! // A worker that prints "Hello!" each times the timer ticks...
+//! struct WorkerThatPrints {
+//!     watcher: Watcher,
+//! }
+//!
+//! impl Worker for WorkerThatPrints {
+//!     fn on_update(&mut self) -> ControlFlow {
+//!         if self.watcher.has_ticked() {
+//!             println!("Hello!");
+//!         }
+//!
+//! #       std::thread::sleep(Duration::from_millis(1));
+//!         ControlFlow::Continue
+//!     }
+//! }
+//!
+//! // ... and its context.
+//! struct WorkerThatPrintsContext {
+//!     watcher: Option<Watcher>,
+//! }
+//!
+//! impl WorkerThatPrintsContext {
+//!     fn new() -> Self {
+//!         Self { watcher: None }
+//!     }
+//! }
+//!
+//! impl Context for WorkerThatPrintsContext {
+//!     type Target = WorkerThatPrints;
+//!     fn into_worker(self) -> Result<Self::Target, Error> {
+//!         Ok(WorkerThatPrints { watcher: self.watcher.expect("the context must be connected") })
+//!     }
+//! }
+//!
+//! impl Connect<Timer> for WorkerThatPrintsContext {
+//!     fn on_connection(&mut self, endpoint: Watcher) {
+//!         let _ = self.watcher.insert(endpoint);
+//!     }
+//! }
+//!
+//! let mut runtime = Runtime::new();
+//!
+//! // Set a timer that ticks every 100ms
+//! let mut timer = Timer::new(Duration::from_millis(100));
+//! let mut worker_ctx = WorkerThatPrintsContext::new();
+//!
+//! // Connect the worker (or rather, its context) to the timer
+//! timer.register(&mut worker_ctx);
+//!
+//! runtime.launch(timer).expect("failed to launch the timer");
+//! runtime.launch_from_context(worker_ctx).expect("failed to launch the worker");
+//!
+//! # std::thread::sleep(Duration::from_secs(1));
+//! ```
 
 #![warn(missing_docs)]
 
@@ -304,7 +365,11 @@ mod settings;
 #[cfg(test)]
 mod test_utils;
 #[cfg(feature = "timing")]
-pub mod timers;
+#[doc(hidden)]
+mod timers;
+#[cfg(feature = "timing")]
+#[cfg_attr(docrs, doc(cfg(feature = "timing")))]
+pub use minuteurs;
 mod utils;
 mod worker;
 

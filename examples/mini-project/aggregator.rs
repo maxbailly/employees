@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
-use employees::timers::*;
+use employees::minuteurs::*;
 use employees::{Connect, Context, Error, Register, Shutdown, Worker};
 
 use crate::messages::AggregatorMessage;

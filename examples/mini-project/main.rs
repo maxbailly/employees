@@ -5,7 +5,7 @@ mod worker;
 
 use std::time::Duration;
 
-use employees::timers::*;
+use employees::minuteurs::*;
 use employees::{Register, Runtime};
 
 use crate::aggregator::AggregatorContext;
