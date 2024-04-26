@@ -1,20 +1,10 @@
-# employees
+# `employees`
 
 A small and lightweight crate to hide most of the burden of setting up threads.
 
 # Philosophy
 
 This crate sees threads as unique entities called `workers` which live as long as the program lives.
-
-One may notice many similarities with async `tasks` but there is one major difference.
-While `tasks` are designed to be short and non-blocking pieces of concurrent code running in async runtimes,
-`workers` on the other hand are the complete opposite:
-- they run on their own OS thread.
-- they are designed to run for a very long time (mostly for the lifetime of the program).
-- they can block on operations as long as they (mostly) want without impacting other `workers`.
-
-Some similarities exist between a full-blown Entity Component System and this crate.
-In some regards, this crate can be viewed as an ECS without the C part.
 
 # Usage
 
@@ -37,6 +27,29 @@ std::thread::sleep(Duration::from_secs(1));
 ```
 
 See [the full documentation](https://docs.rs/employees/latest/employees/) for more in depth details.
+
+# Should I use `employees`?
+
+## Concurrency
+
+`employees` is built with *CPU-bound concurrency* in mind.
+
+"But wait, arent't async runtimes built for that purpose?" you might ask, and you'll be 100% right.
+
+But `async` has drawbacks which `employees` hasn't:
+
+* async tasks must not be blocking,
+* the famous [colored function problem](https://journal.stuffwithstuff.com/2015/02/01/what-color-is-your-function/).
+
+That said, there are usecases where async runtime will be better such as I/O bound tasks (web servers, ect.) or concurrent tasks on single threaded platforms.
+
+## Paralellism
+
+Again, `employees` is built with *concurrency* in mind. While it is possible to build a work stealing thread pool from `employees` to parallelize some kind of computation, other crates such as [`rayon`](https://docs.rs/rayon/latest/rayon/) add a ton of utilities speficically made for that purpose which is why, for most paralellism usecases, `rayon`-like crates will be a better choice.
+
+## ECS
+
+`employees` is not an ECS in any shape or form. While it *might* be possible to build one from this crate, users are better off using ECS crates.
 
 # License
 
