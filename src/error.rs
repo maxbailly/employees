@@ -1,5 +1,6 @@
 //! The various errors implementations.
 
+use std::error::Error as StdError;
 use std::fmt::{Debug, Display, Formatter, Result};
 
 /* ---------- */
@@ -11,7 +12,7 @@ pub enum Error {
     /// Something went wrong when spawning a thread.
     Thread(std::io::Error),
     /// Other kinds of error.
-    Other(Box<dyn Display + Send + Sync>),
+    Other(Box<dyn StdError + Send + Sync>),
 }
 
 impl Error {
@@ -31,7 +32,7 @@ impl Error {
     /// Returns a new [`Error::Other`] from some error.
     pub fn other<E>(err: E) -> Self
     where
-        E: Display + Send + Sync + 'static,
+        E: StdError + Send + Sync + 'static,
     {
         Self::Other(Box::new(err))
     }
@@ -42,7 +43,7 @@ impl Debug for Error {
         match self {
             Error::Context(inner) => f.debug_tuple("Context").field(&format!("{inner}")).finish(),
             Error::Thread(inner) => f.debug_tuple("Thread").field(inner).finish(),
-            Error::Other(inner) => f.debug_tuple("Other").field(&format!("{inner}")).finish(),
+            Error::Other(inner) => f.debug_tuple("Other").field(inner).finish(),
         }
     }
 }
@@ -57,4 +58,12 @@ impl Display for Error {
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+        match self {
+            Self::Context(..) => None,
+            Self::Thread(err) => Some(err),
+            Self::Other(err) => Some(err.as_ref()),
+        }
+    }
+}
