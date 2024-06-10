@@ -1,10 +1,10 @@
 # `employees`
 
-A small and lightweight crate to hide most of the burden of setting up threads.
+A small and lightweight crate to hide most of the burden of setting up long-living threads.
 
 # Philosophy
 
-This crate sees threads as unique entities called `workers` which live as long as the program lives.
+This crate sees threads as unique entities called `workers` which may (or may not) live as long as the program lives. `Workers` are spawned in `Runtimes` that manage them.
 
 # Usage
 
@@ -36,7 +36,7 @@ See [the full documentation](https://docs.rs/employees/latest/employees/) for mo
 
 "But wait, arent't async runtimes built for that purpose?" you might ask, and you'll be 100% right.
 
-But `async` has drawbacks which `employees` hasn't:
+However, `async` has drawbacks which `employees` hasn't:
 
 * async tasks must not be blocking,
 * the famous [colored function problem](https://journal.stuffwithstuff.com/2015/02/01/what-color-is-your-function/).
@@ -46,10 +46,6 @@ That said, there are usecases where async runtime will be better such as I/O bou
 ## Paralellism
 
 Again, `employees` is built with *concurrency* in mind. While it is possible to build a work stealing thread pool from `employees` to parallelize some kind of computation, other crates such as [`rayon`](https://docs.rs/rayon/latest/rayon/) add a ton of utilities speficically made for that purpose which is why, for most paralellism usecases, `rayon`-like crates will be a better choice.
-
-## ECS
-
-`employees` is not an ECS in any shape or form. While it *might* be possible to build one from this crate, users are better off using ECS crates.
 
 # License
 

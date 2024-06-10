@@ -1,4 +1,11 @@
-//! A small and lightweight crate to hide most of the burden of setting up threads.
+//! A small and lightweight crate to hide most of the burden of setting up long-living threads.
+//!
+//! # Philosophy
+//!
+//! This crate sees threads as unique entities called [`Workers`] which may (or may not) live as long as the program lives. [`Workers`] are spawned in [`Runtimes`] that manage them.
+//!
+//! [`Runtimes`]: crate::Runtime
+//! [`Workers`]: crate::Worker
 //!
 //! # Usage
 //!
