@@ -188,6 +188,13 @@ impl<'scope, 'env> ScopedRuntime<'scope, 'env> {
             .drain(..)
             .filter(|handle| !handle.is_finished())
             .collect::<Vec<_>>();
+
+        // Filter the threads that finished.
+        self.threads = self
+            .threads
+            .drain(..)
+            .filter(|handle| !handle.is_finished())
+            .collect::<Vec<_>>();
     }
 
     #[inline]

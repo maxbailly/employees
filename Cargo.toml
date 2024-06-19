@@ -25,6 +25,8 @@ axum = "0.6.20"
 crossbeam-channel = "0.5.8"
 anyhow = "1.0.75"
 
+employees = { path = ".", features = ["timing"] }
+
 [features]
 default = []
 timing = ["dep:minuteurs"]
