@@ -100,7 +100,7 @@ impl Shutdown {
     /// [`Runtime`]: crate::Runtime
     #[inline]
     pub fn stop(&self) {
-        self.0.store(true, Ordering::SeqCst)
+        self.0.store(true, Ordering::Release)
     }
 
     /// Returns whether or not the [`Runtime`] is running.
@@ -108,7 +108,7 @@ impl Shutdown {
     /// [`Runtime`]: crate::Runtime
     #[inline]
     pub fn is_running(&self) -> bool {
-        !self.0.load(Ordering::SeqCst)
+        !self.0.load(Ordering::Acquire)
     }
 }
 
