@@ -361,7 +361,7 @@ mod test_utils;
 #[doc(hidden)]
 mod timers;
 #[cfg(feature = "timing")]
-#[cfg_attr(docrs, doc(cfg(feature = "timing")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "timing")))]
 pub use minuteurs;
 mod utils;
 mod worker;
